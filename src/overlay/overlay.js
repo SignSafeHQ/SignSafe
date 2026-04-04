@@ -10,8 +10,6 @@
   const normalizeArray = HELPERS.normalizeArray || ((v) => (Array.isArray(v) ? v : []));
   const normalizeRisk = HELPERS.normalizeRisk || ((v) => (["safe", "review", "danger"].includes(v) ? v : "review"));
   const summarizeBatchFacts = HELPERS.summarizeBatchFacts || (() => ({}));
-  const phaseLabel = HELPERS.phaseLabel || (() => "Preparing");
-  const shortMethodLabel = HELPERS.shortMethodLabel || ((v) => v || "");
 
   let currentSessionId = null;
   let currentRisk = null;
@@ -101,10 +99,7 @@
     if (tint) tint.className = "";
 
     setText("kicker-text", "Analyzing transaction");
-    setText("sec-label-text", "Simulating on-chain");
     setText("site-chip-text", currentOrigin || "analyzing…");
-    setText("intercept-text", buildInterceptText("scan", currentOrigin, payload.phase));
-    setText("time-text", "analyzing…");
 
     setButtonState({ loading: true });
   }
@@ -113,7 +108,6 @@
     const risk = normalizeRisk(verdict.risk);
     currentRisk = risk;
 
-    const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) + " s" : "";
     const facts = normalizeFacts(verdict);
     const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
 
@@ -142,32 +136,11 @@
     // Headline (DM Serif Display)
     setText("risk-headline", verdict.summary || "Unable to analyze this transaction clearly.");
 
-    // Intercept bar
-    setText("intercept-text", buildInterceptText(risk, currentOrigin, method));
-
     // Site chip
     setText("site-chip-text", currentOrigin || "—");
 
-    // Progress label for multi-tx
-    const methodShort = shortMethodLabel(method);
-    const progressText = meta && meta.total > 1 ? `${methodShort} ${meta.current} of ${meta.total}` : methodShort;
-    if (progressText && progressText !== "Transaction") {
-      setText("sec-label-text", progressText);
-    } else {
-      setText("sec-label-text", risk === "danger" ? "Risk flags detected" : "Transaction breakdown");
-    }
-
     // Action rows
     renderActionRows(verdict, facts, risk);
-
-    // Verdict callout
-    const calloutText = verdict.verdict || "";
-    if (calloutText) {
-      setText("verdict-callout", calloutText);
-      showElement("verdict-callout");
-    } else {
-      hideElement("verdict-callout");
-    }
 
     // Advanced options (danger only)
     if (risk === "danger") {
@@ -184,15 +157,6 @@
     } else {
       hideElement("adv-toggle");
       hideElement("adv-content");
-    }
-
-    // Footer
-    setText("time-text", elapsed || "—");
-    if (risk !== "danger") {
-      showElement("wallet-chip");
-      setText("wallet-chip-text", risk === "safe" ? "→ wallet opens after" : "→ wallet opens if you proceed");
-    } else {
-      hideElement("wallet-chip");
     }
 
     // Debug
@@ -213,11 +177,8 @@
     setRiskState("safe");
     hideElement("rh-loading");
     hideElement("risk-headline");
-    hideElement("verdict-callout");
     hideElement("adv-toggle");
     hideElement("adv-content");
-    showElement("wallet-chip");
-    setText("wallet-chip-text", "→ wallet opens after");
 
     const tint = document.getElementById("backdrop-tint");
     if (tint) tint.className = "";
@@ -252,9 +213,6 @@
       batchList.appendChild(li);
     }
 
-    setText("time-text", "");
-    setText("sec-label-text", "Batch summary");
-    setText("intercept-text", buildInterceptText("safe", currentOrigin, "batch"));
 
     setText("debug-json", JSON.stringify({ verdicts }, null, 2));
     document.getElementById("debug-details").open = false;
@@ -361,25 +319,6 @@
         <div class="a-body"><div class="skel skel-body-short"></div></div>
       </div>
     `;
-  }
-
-  // ─── Intercept bar text ───────────────────────────────────────────────────
-
-  function buildInterceptText(risk, origin, method) {
-    const from = origin ? ` from <strong>${escapeHtml(origin)}</strong>` : "";
-    if (risk === "scan") {
-      return `SignSafe intercepted a transaction${from} — analyzing before your wallet opens…`;
-    }
-    if (risk === "safe") {
-      return `Transaction${from} intercepted & analyzed. <strong>No issues found.</strong>`;
-    }
-    if (risk === "review") {
-      return `Transaction${from} intercepted. <strong>Review before proceeding.</strong>`;
-    }
-    if (risk === "danger") {
-      return `Transaction${from} intercepted. <strong>High risk detected — do not sign.</strong>`;
-    }
-    return `Transaction${from} intercepted.`;
   }
 
   // ─── State helpers ────────────────────────────────────────────────────────
