@@ -6,6 +6,7 @@
   const contentRoot = globalThis.SIGNSAFE_CONTENT || (globalThis.SIGNSAFE_CONTENT = {});
 
   contentRoot.createOverlaySession = function createOverlaySession(debugLog) {
+    const overlayUrl = getRuntimeUrl("overlay.html");
     const sessionId = `signsafe-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const iframe = document.createElement("iframe");
     const ready = new Promise((resolve) => {
@@ -14,7 +15,7 @@
     const pendingHandlers = [];
 
     iframe.id = "signsafe-overlay";
-    iframe.src = chrome.runtime.getURL("overlay.html");
+    iframe.src = overlayUrl;
     iframe.setAttribute("allowtransparency", "true");
     iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
     iframe.style.cssText = [
@@ -93,4 +94,12 @@
       }
     };
   };
+
+  function getRuntimeUrl(path) {
+    try {
+      return chrome.runtime.getURL(path);
+    } catch (_error) {
+      throw new Error("SignSafe was reloaded or updated. Reload this page and try again.");
+    }
+  }
 })();

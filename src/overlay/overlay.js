@@ -133,10 +133,10 @@
     const riskReasons = normalizeArray(verdict.risk_reasons);
     const risksSection = document.getElementById("risks-section");
     if (riskReasons.length > 0) {
-      risksSection.classList.remove("hidden");
+      setVisibility(risksSection, true);
       fillList("risks-list", riskReasons, "");
     } else {
-      risksSection.classList.add("hidden");
+      setVisibility(risksSection, false);
       fillList("risks-list", [], "");
     }
 
@@ -500,8 +500,15 @@
 
   function activateState(activeId) {
     for (const state of document.querySelectorAll(".state")) {
-      state.classList.toggle("hidden", state.id !== activeId);
+      setVisibility(state, state.id === activeId);
     }
+  }
+
+  function setVisibility(element, visible) {
+    if (!element) return;
+    element.hidden = !visible;
+    element.classList.toggle("hidden", !visible);
+    element.setAttribute("aria-hidden", visible ? "false" : "true");
   }
 
   function revealPanel() {

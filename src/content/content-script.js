@@ -71,7 +71,13 @@
   function injectPageScript(path) {
     return new Promise((resolve, reject) => {
       const script = document.createElement("script");
-      script.src = chrome.runtime.getURL(path);
+      const scriptUrl = getRuntimeUrl(path);
+      if (!scriptUrl) {
+        reject(buildExtensionReloadedError());
+        return;
+      }
+
+      script.src = scriptUrl;
       script.dataset.signsafe = "true";
       script.onload = () => {
         script.remove();
@@ -86,6 +92,10 @@
   }
 
   async function handleAnalyzeRequest(message) {
+    if (!createOverlaySession || !hasRuntimeAccess()) {
+      throw buildExtensionReloadedError();
+    }
+
     if (message.isSignMessage) {
       const session = createOverlaySession();
       try {
@@ -197,6 +207,11 @@
 
   function sendRuntimeMessage(payload) {
     return new Promise((resolve) => {
+      if (!hasRuntimeAccess()) {
+        resolve(buildRuntimeUnavailableVerdict());
+        return;
+      }
+
       let settled = false;
       const timeoutId = setTimeout(() => {
         if (settled) {
@@ -258,8 +273,42 @@
   }
 
   function syncDebugState() {
+    if (!hasRuntimeAccess()) {
+      return;
+    }
+
     chrome.runtime.sendMessage({ type: RUNTIME_MESSAGE_TYPES.SET_DEBUG || "SET_DEBUG", enabled: DEBUG }, () => {
       void chrome.runtime.lastError;
     });
+  }
+
+  function hasRuntimeAccess() {
+    try {
+      return Boolean(chrome?.runtime?.id);
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function getRuntimeUrl(path) {
+    try {
+      return chrome.runtime.getURL(path);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function buildExtensionReloadedError() {
+    return new Error("SignSafe was reloaded or updated. Reload this page and try again.");
+  }
+
+  function buildRuntimeUnavailableVerdict() {
+    return {
+      risk: "review",
+      summary: "The SignSafe extension was reloaded or updated while this page was open.",
+      actions: ["Reload the page, then retry the transaction so SignSafe can analyze it."],
+      risk_reasons: ["Extension context invalidated."],
+      verdict: "Do not rely on this tab until the page is reloaded."
+    };
   }
 })();

@@ -19,6 +19,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:cen
 .nav-links a:hover{color:var(--text);}
 .btn-chrome{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;padding:8px 18px;border-radius:6px;border:1px solid var(--red);background:var(--red-dim);color:var(--red);cursor:pointer;text-decoration:none;transition:all .2s;}
 .btn-chrome:hover{background:var(--red);color:#fff;}
+.cta-button{appearance:none;}
 .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 40px 80px;position:relative;text-align:center;}
 .hero-glow{position:absolute;top:20%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(239,58,58,.08) 0%,transparent 70%);pointer-events:none;}
 .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--red);margin-bottom:24px;display:flex;align-items:center;gap:8px;}
@@ -114,12 +115,42 @@ h2 em{font-style:italic;}
 .cta-section h2{max-width:700px;margin:0 auto 24px;}
 .cta-section .lead{margin:0 auto 40px;}
 .install-note{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2);margin-top:16px;}
+.beta-note{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2);margin-top:16px;}
+.beta-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(6,6,8,.78);backdrop-filter:blur(14px);z-index:300;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+.beta-modal.open{opacity:1;pointer-events:auto;}
+.beta-panel{width:min(100%,520px);border-radius:18px;border:1px solid var(--border);background:linear-gradient(180deg,rgba(13,13,16,.98),rgba(9,9,12,.98));box-shadow:0 40px 100px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.03);padding:28px;position:relative;overflow:hidden;}
+.beta-panel::before{content:'';position:absolute;top:0;left:12%;right:12%;height:1px;background:linear-gradient(90deg,transparent,rgba(239,58,58,.8),transparent);}
+.beta-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:16px;cursor:pointer;transition:all .2s;}
+.beta-close:hover{color:var(--text);border-color:var(--border-2);}
+.beta-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);margin-bottom:16px;}
+.beta-panel h3{font-family:'DM Serif Display',serif;font-size:38px;font-weight:400;line-height:1.08;letter-spacing:-.02em;margin-bottom:14px;padding-right:40px;}
+.beta-copy{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:24px;max-width:420px;}
+.beta-points{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:24px;}
+.beta-point{border-radius:12px;border:1px solid var(--border);background:var(--surface-2);padding:12px 14px;}
+.beta-point-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);margin-bottom:6px;}
+.beta-point-value{font-size:13px;line-height:1.5;color:var(--text);}
+.beta-form{display:flex;flex-direction:column;gap:12px;}
+.beta-field{display:flex;flex-direction:column;gap:7px;text-align:left;}
+.beta-field label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-2);}
+.beta-field input{width:100%;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:14px 15px;font-family:'Geist',sans-serif;font-size:15px;outline:none;transition:border-color .2s, box-shadow .2s;}
+.beta-field input:focus{border-color:rgba(239,58,58,.45);box-shadow:0 0 0 3px rgba(239,58,58,.08);}
+.beta-form-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;}
+.beta-submit{min-width:150px;}
+.beta-footnote{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7;color:var(--muted-2);}
+.beta-status{min-height:18px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);}
+.beta-status.success{color:var(--green);}
+.beta-status.error{color:var(--red);}
+.beta-panel.success .beta-form{display:none;}
+.beta-success{display:none;padding:6px 0 2px;}
+.beta-panel.success .beta-success{display:block;}
+.beta-success h4{font-family:'DM Serif Display',serif;font-size:32px;font-weight:400;line-height:1.1;margin-bottom:12px;}
+.beta-success p{font-size:15px;line-height:1.7;color:var(--muted);}
 footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:center;justify-content:space-between;max-width:1100px;margin:0 auto;}
 .footer-logo{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted-2);}
 .footer-note{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted-2);}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
 .hero{animation:slideUp .6s ease both;}
-@media(max-width:768px){nav{padding:0 20px;}.nav-links{display:none;}.hero,section,.problem-section,.cta-section{padding:80px 20px;}.steps,.risk-grid{grid-template-columns:1fr;}.problem-section{grid-template-columns:1fr;}.stat-strip-inner{grid-template-columns:1fr;padding:0 20px;}.stat-item{border-right:none;border-bottom:1px solid var(--border);padding:32px 0;}footer{flex-direction:column;gap:12px;padding:32px 20px;}}
+@media(max-width:768px){nav{padding:0 20px;}.nav-links{display:none;}.hero,section,.problem-section,.cta-section{padding:80px 20px;}.steps,.risk-grid,.beta-points,.beta-form-row{grid-template-columns:1fr;}.problem-section{grid-template-columns:1fr;}.stat-strip-inner{grid-template-columns:1fr;padding:0 20px;}.stat-item{border-right:none;border-bottom:1px solid var(--border);padding:32px 0;}.beta-panel{padding:24px 20px;}.beta-panel h3{font-size:32px;}.beta-submit{width:100%;}footer{flex-direction:column;gap:12px;padding:32px 20px;}}
 </style>
 </head>
 <body>
@@ -130,7 +161,7 @@ footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:
     <a href="#how">How it works</a>
     <a href="#risk">Risk levels</a>
     <a href="#" target="_blank">GitHub</a>
-    <a href="#" class="btn-chrome">Add to Chrome</a>
+    <button type="button" class="btn-chrome cta-button" data-open-beta>Join beta</button>
   </div>
 </nav>
 
@@ -140,7 +171,7 @@ footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:
   <h1>See what you're<br><em>actually signing</em></h1>
   <p class="hero-sub">A browser extension that intercepts every Solana transaction before your wallet signs it &mdash; decoded, simulated, and explained in plain English.</p>
   <div class="hero-cta">
-    <a href="#" class="btn-primary">Add to Chrome &mdash; free</a>
+    <button type="button" class="btn-primary cta-button" data-open-beta>Join beta</button>
     <a href="#how" class="btn-ghost">See how it works</a>
   </div>
   <div class="demo-panel">
@@ -209,17 +240,48 @@ footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:
 
 <div class="cta-section">
   <div class="cta-glow"></div>
-  <div class="section-label">Get protected</div>
+  <div class="section-label">Join the beta</div>
   <h2>Stop signing things<br>you don't <em>understand.</em></h2>
-  <p class="lead">Free, open source, and works with every Solana wallet &mdash; Phantom, Backpack, Solflare, and more.</p>
-  <a href="#" class="btn-primary">Add to Chrome &mdash; it's free</a>
-  <div class="install-note">No account required &middot; Open source on GitHub &middot; Works on all Solana dApps</div>
+  <p class="lead">Early testers get private builds, direct founder updates, and first access when SignSafe is ready for public release.</p>
+  <button type="button" class="btn-primary cta-button" data-open-beta>Join beta</button>
+  <div class="beta-note">Private beta &middot; Early access builds &middot; Solana wallet power users first</div>
 </div>
 
 <footer>
   <div class="footer-logo">SignSafe v0.1 &mdash; Solana transaction security</div>
   <div class="footer-note">Built at a hackathon &middot; Open source &middot; Not a wallet</div>
 </footer>
+
+<div class="beta-modal" id="beta-modal" aria-hidden="true">
+  <div class="beta-panel" role="dialog" aria-modal="true" aria-labelledby="beta-title">
+    <button type="button" class="beta-close" id="beta-close" aria-label="Close beta form">&times;</button>
+    <div class="beta-eyebrow">Founding beta</div>
+    <h3 id="beta-title">Join the first wave.</h3>
+    <p class="beta-copy">We are inviting a small group of Solana users who want sharper transaction warnings before signing. Leave your email and we will send early access when the beta opens.</p>
+    <div class="beta-points">
+      <div class="beta-point"><div class="beta-point-label">Access</div><div class="beta-point-value">Private builds before store launch</div></div>
+      <div class="beta-point"><div class="beta-point-label">Focus</div><div class="beta-point-value">Wallet safety for real dApp flows</div></div>
+      <div class="beta-point"><div class="beta-point-label">Feedback</div><div class="beta-point-value">Direct line for false positives and misses</div></div>
+    </div>
+    <form class="beta-form" id="beta-form" action="https://formspree.io/f/your-form_id" method="POST">
+      <div class="beta-form-row">
+        <div class="beta-field">
+          <label for="beta-email">Email</label>
+          <input id="beta-email" name="email" type="email" placeholder="you@wallet.com" required>
+        </div>
+        <button type="submit" class="btn-primary beta-submit">Request access</button>
+      </div>
+      <input type="hidden" name="product" value="SignSafe Beta">
+      <input type="hidden" name="source" value="Landing Page Popover">
+      <div class="beta-status" id="beta-status" aria-live="polite"></div>
+      <div class="beta-footnote">Replace <code>your-form_id</code> with your Formspree endpoint in this file before launch.</div>
+    </form>
+    <div class="beta-success" id="beta-success">
+      <h4>You're on the list.</h4>
+      <p>We will reach out when the next SignSafe beta slots open. Keep an eye on your inbox for the private build and setup instructions.</p>
+    </div>
+  </div>
+</div>
 
 <script>
 const D={
@@ -240,6 +302,72 @@ function renderDemo(t){
     '<div class="result-buttons"><div class="rb-block">Block transaction</div><div class="rb-proceed" style="'+d.ps+'">'+d.pl+'</div></div></div>';
 }
 renderDemo('danger');
+
+const betaModal=document.getElementById('beta-modal');
+const betaPanel=betaModal.querySelector('.beta-panel');
+const betaForm=document.getElementById('beta-form');
+const betaStatus=document.getElementById('beta-status');
+const betaSuccess=document.getElementById('beta-success');
+const betaEmail=document.getElementById('beta-email');
+const betaClose=document.getElementById('beta-close');
+let lastFocusedTrigger=null;
+
+function openBetaModal(trigger){
+  lastFocusedTrigger=trigger||document.activeElement;
+  betaPanel.classList.remove('success');
+  betaSuccess.style.display='';
+  betaModal.classList.add('open');
+  betaModal.setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+  window.setTimeout(()=>betaEmail.focus(),40);
+}
+
+function closeBetaModal(){
+  betaModal.classList.remove('open');
+  betaModal.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+  betaStatus.textContent='';
+  betaStatus.className='beta-status';
+  betaPanel.classList.remove('success');
+  betaSuccess.style.display='';
+  if(lastFocusedTrigger&&typeof lastFocusedTrigger.focus==='function') lastFocusedTrigger.focus();
+}
+
+document.querySelectorAll('[data-open-beta]').forEach((button)=>{
+  button.addEventListener('click',()=>openBetaModal(button));
+});
+
+betaClose.addEventListener('click',closeBetaModal);
+betaModal.addEventListener('click',(event)=>{
+  if(event.target===betaModal) closeBetaModal();
+});
+document.addEventListener('keydown',(event)=>{
+  if(event.key==='Escape'&&betaModal.classList.contains('open')) closeBetaModal();
+});
+
+betaForm.addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  betaStatus.textContent='Submitting...';
+  betaStatus.className='beta-status';
+
+  try{
+    const response=await fetch(betaForm.action,{
+      method:'POST',
+      headers:{'Accept':'application/json'},
+      body:new FormData(betaForm)
+    });
+
+    if(!response.ok) throw new Error('Request failed');
+
+    betaForm.reset();
+    betaPanel.classList.add('success');
+    betaSuccess.style.display='block';
+    betaStatus.textContent='';
+  }catch(error){
+    betaStatus.textContent='Could not submit. Please try again in a moment.';
+    betaStatus.className='beta-status error';
+  }
+});
 </script>
 </body>
 </html>
