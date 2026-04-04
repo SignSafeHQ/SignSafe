@@ -21,20 +21,6 @@
           <code>connect</code>, <code>signMessage</code>, <code>signTransaction</code>, and
           <code>sendTransaction</code>.
         </p>
-        <div class="hero-strip">
-          <div class="hero-stat">
-            <div class="hero-stat-label">Mode</div>
-            <div class="hero-stat-value">Localhost only</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-label">Wallet flow</div>
-            <div class="hero-stat-value">Intercept before prompt</div>
-          </div>
-          <div class="hero-stat">
-            <div class="hero-stat-label">Target</div>
-            <div class="hero-stat-value">Solana devnet</div>
-          </div>
-        </div>
       </section>
 
       <section class="panel">
@@ -66,8 +52,8 @@
           <button id="btn-complex-send" type="button">Multi-Instruction Send</button>
         </div>
 
-        <div class="notes">
-          <p>Requirements</p>
+        <details class="notes">
+          <summary>Requirements</summary>
           <ul>
             <li>Run this page from <code>http://127.0.0.1</code> or <code>http://localhost</code>.</li>
             <li>Keep Phantom or Solflare on devnet.</li>
@@ -76,7 +62,7 @@
             <li>Use <code>Multi-Instruction Send</code> to exercise a transaction with more than one instruction.</li>
             <li>Watch DevTools for <code>[SignSafe ...]</code> logs while you click each action.</li>
           </ul>
-        </div>
+        </details>
       </section>
 
       <section class="panel">

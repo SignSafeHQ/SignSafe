@@ -51,13 +51,13 @@ code {
 .shell {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 28px 0 48px;
+  padding: 20px 0 32px;
 }
 
 .hero {
   position: relative;
-  margin-bottom: 22px;
-  padding: 10px 0 0;
+  margin-bottom: 12px;
+  padding: 4px 0 0;
 }
 
 .hero-glow {
@@ -76,7 +76,7 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 18px;
+  margin: 0 0 10px;
   color: var(--red);
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
@@ -112,10 +112,10 @@ code {
 }
 
 h1 {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   max-width: 720px;
   font-family: "DM Serif Display", serif;
-  font-size: clamp(32px, 6vw, 58px);
+  font-size: clamp(28px, 5vw, 48px);
   font-weight: 400;
   letter-spacing: -0.03em;
   line-height: 1.04;
@@ -124,27 +124,11 @@ h1 {
 
 .intro {
   max-width: 760px;
-  margin: 0 0 22px;
+  margin: 0;
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.6;
   font-weight: 400;
-}
-
-.hero-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  background: var(--border);
-}
-
-.hero-stat {
-  padding: 18px 20px;
-  background: rgba(13,13,16,0.78);
-  backdrop-filter: blur(18px);
 }
 
 .hero-stat-label,
@@ -158,17 +142,10 @@ h1 {
   text-transform: uppercase;
 }
 
-.hero-stat-value {
-  color: var(--text);
-  font-family: "DM Serif Display", serif;
-  font-size: 19px;
-  line-height: 1.1;
-}
-
 .panel {
   position: relative;
   margin-top: 16px;
-  padding: 22px;
+  padding: 18px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background:
@@ -190,20 +167,20 @@ h1 {
 
 .meta-grid {
   display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .meta-card {
-  min-height: 98px;
-  padding: 16px 16px 14px;
+  min-height: 0;
+  padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface-2);
 }
 
 .label {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   color: var(--muted-2);
   font-family: "JetBrains Mono", monospace;
   font-size: 10px;
@@ -213,9 +190,9 @@ h1 {
 }
 
 .value {
-  min-height: 36px;
-  font-size: 15px;
-  line-height: 1.5;
+  min-height: 0;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--text);
   word-break: break-word;
   font-family: "JetBrains Mono", monospace;
@@ -224,12 +201,13 @@ h1 {
 .button-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  margin-top: 18px;
+  grid-template-columns: repeat(4, minmax(140px, 190px));
+  justify-content: center;
+  margin-top: 14px;
 }
 
 button {
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 18px;
   border: 1px solid var(--red-border);
   border-radius: 10px;
@@ -280,28 +258,45 @@ button:disabled {
 }
 
 .notes {
-  margin-top: 18px;
-  padding: 18px 20px;
+  margin-top: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(20,20,24,0.55);
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
-.notes p {
-  margin: 0 0 12px;
+.notes summary {
+  margin: 0;
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+
+.notes summary::-webkit-details-marker {
+  display: none;
+}
+
+.notes summary::after {
+  content: "Show";
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.notes[open] summary::after {
+  content: "Hide";
 }
 
 .notes ul {
-  margin: 0;
+  margin: 12px 0 0;
   padding-left: 18px;
 }
 
@@ -347,21 +342,16 @@ button:disabled {
     padding-top: 20px;
   }
 
-  .hero-strip {
-    grid-template-columns: 1fr;
-  }
-
   .panel {
     padding: 18px;
     border-radius: 14px;
   }
 
-  .meta-card {
-    min-height: 0;
+  .meta-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .value {
-    min-height: 0;
-    font-size: 16px;
+  .button-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
