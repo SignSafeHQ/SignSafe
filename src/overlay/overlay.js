@@ -13,7 +13,8 @@
 
   const normalizeFacts = HELPERS.normalizeFacts || ((verdict) => verdict?.facts || {});
   const normalizeArray = HELPERS.normalizeArray || ((value) => (Array.isArray(value) ? value : []));
-  const normalizeRisk = HELPERS.normalizeRisk || ((value) => value || "review");
+  const SAFE_RISKS = ["safe", "review", "danger"];
+  const normalizeRisk = HELPERS.normalizeRisk || ((value) => (SAFE_RISKS.includes(value) ? value : "review"));
   const formatSolChanges = HELPERS.formatSolChanges || ((items) => String(items || ""));
   const formatTokenChanges = HELPERS.formatTokenChanges || ((items) => String(items || ""));
   const formatPrograms = HELPERS.formatPrograms || ((items) => String(items || ""));
@@ -22,11 +23,17 @@
   const phaseLabel = HELPERS.phaseLabel || (() => "Preparing");
 
   let currentSessionId = null;
+  let stepTimerId = null;
+  let parentOrigin = null;
 
   window.addEventListener("message", (event) => {
     const message = event.data;
     if (!message || message.channel !== CHANNEL) {
       return;
+    }
+
+    if (!parentOrigin && event.origin) {
+      parentOrigin = event.origin;
     }
 
     debugLog("received", message.type, message.sessionId);
@@ -65,7 +72,7 @@
         type: OVERLAY_MESSAGE_TYPES.DECISION || "DECISION",
         approved
       },
-      "*"
+      parentOrigin || "*"
     );
   }
 
@@ -76,13 +83,36 @@
     setText("loading-title", payload.title || "Analyzing transaction");
     setText("loading-detail", payload.detail || "Simulating on-chain effects and preparing a plain-English verdict.");
     setButtonState({ loading: true });
+
+    // Reset backdrop tint
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = "";
+
+    // Reset and advance step bar
+    const stepSimulate = document.getElementById("step-simulate");
+    const stepAI = document.getElementById("step-ai");
+    if (stepSimulate) stepSimulate.classList.add("active");
+    if (stepAI) stepAI.classList.remove("active");
+    clearTimeout(stepTimerId);
+    stepTimerId = setTimeout(() => {
+      if (stepAI) stepAI.classList.add("active");
+    }, 1500);
   }
 
   function renderVerdict(verdict, meta) {
     revealPanel();
     activateState("verdict-state");
+    clearTimeout(stepTimerId);
 
     const risk = normalizeRisk(verdict.risk);
+
+    // Risk icon
+    const iconEl = document.getElementById("risk-icon");
+    if (iconEl) iconEl.innerHTML = riskIconSvg(risk);
+
+    // Backdrop tint
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = risk === "safe" ? "" : risk;
     const facts = normalizeFacts(verdict);
     const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
     const source = facts.source || verdict.source || "unknown";
@@ -125,6 +155,11 @@
   function renderBatch(verdicts) {
     revealPanel();
     activateState("batch-state");
+    clearTimeout(stepTimerId);
+
+    // Reset backdrop tint for batch
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = "";
 
     const combinedFacts = summarizeBatchFacts(verdicts);
     const actionItems = verdicts
@@ -229,6 +264,22 @@
       item.textContent = value;
       list.appendChild(item);
     }
+  }
+
+  function riskIconSvg(risk) {
+    const paths = {
+      safe: '<polyline points="6,13 11,18 22,7" stroke-linecap="round" stroke-linejoin="round"/>',
+      review: '<line x1="16" y1="9" x2="16" y2="15"/><circle cx="16" cy="19" r="1.4" fill="currentColor"/>',
+      danger: '<line x1="10" y1="10" x2="22" y2="22"/><line x1="22" y1="10" x2="10" y2="22"/>'
+    };
+    const strokes = {
+      safe: "var(--safe-ink)",
+      review: "var(--review-ink)",
+      danger: "var(--danger-ink)"
+    };
+    const stroke = strokes[risk] || strokes.review;
+    const path = paths[risk] || paths.review;
+    return `<svg class="${risk}" viewBox="0 0 32 32" fill="none" stroke="${stroke}" stroke-width="2.4"><g transform="translate(4,4)">${path}</g></svg>`;
   }
 
   function setText(id, value) {

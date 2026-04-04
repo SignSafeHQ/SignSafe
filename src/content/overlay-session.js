@@ -11,10 +11,12 @@
     const ready = new Promise((resolve) => {
       iframe.addEventListener("load", resolve, { once: true });
     });
+    const pendingHandlers = [];
 
     iframe.id = "signsafe-overlay";
     iframe.src = chrome.runtime.getURL("overlay.html");
     iframe.setAttribute("allowtransparency", "true");
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
     iframe.style.cssText = [
       "position:fixed",
       "inset:0",
@@ -54,10 +56,13 @@
             return;
           }
 
+          const idx = pendingHandlers.indexOf(handler);
+          if (idx >= 0) pendingHandlers.splice(idx, 1);
           window.removeEventListener("message", handler);
           resolve(Boolean(message.approved));
         };
 
+        pendingHandlers.push(handler);
         window.addEventListener("message", handler);
         await post({ type, payload });
       });
@@ -77,6 +82,10 @@
         return awaitDecision(OVERLAY_MESSAGE_TYPES.SHOW_BATCH || "SHOW_BATCH", { verdicts });
       },
       close() {
+        for (const handler of pendingHandlers) {
+          window.removeEventListener("message", handler);
+        }
+        pendingHandlers.length = 0;
         if (iframe.isConnected) {
           debugLog?.("overlay closed");
           iframe.remove();

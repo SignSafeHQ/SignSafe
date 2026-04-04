@@ -41,8 +41,12 @@
     }
 
     analysisInProgress = true;
-    const response = await handleAnalyzeRequest(message);
-    analysisInProgress = false;
+    let response;
+    try {
+      response = await handleAnalyzeRequest(message);
+    } finally {
+      analysisInProgress = false;
+    }
     debugLog("sending page analyze response", message.method, response.approved);
     window.postMessage(
       {

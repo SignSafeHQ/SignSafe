@@ -3,87 +3,307 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SignSafe Options</title>
+    <title>SignSafe Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
         color-scheme: light;
-        font-family: "Segoe UI", sans-serif;
+        --ink: #0f1f35;
+        --muted: #536277;
+        --line: rgba(15, 31, 53, 0.10);
+        --safe-bg: #d6f5e3;
+        --safe-ink: #0a5c35;
+        --review-bg: #fff0c2;
+        --review-ink: #7a4c00;
+        --danger-bg: #ffe4e3;
+        --danger-ink: #991f1c;
       }
+
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
-        padding: 32px;
-        background: #f4f7fb;
-        color: #132033;
+        padding: 40px 24px;
+        background: linear-gradient(160deg, #edf1f8, #e6ecf5);
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: "Inter", "Segoe UI", sans-serif;
       }
 
       main {
-        max-width: 640px;
-        padding: 28px;
-        border-radius: 20px;
-        background: white;
-        box-shadow: 0 18px 48px rgba(19, 32, 51, 0.12);
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 32px;
+        border-radius: 22px;
+        background: #ffffff;
+        box-shadow: 0 8px 40px rgba(15, 31, 53, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.7);
+      }
+
+      /* ── Wordmark ── */
+      .wordmark {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 20px;
+      }
+
+      .wordmark-shield {
+        width: 30px;
+        height: 30px;
+        background: linear-gradient(135deg, #2b6fff, #1a50d4);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 3px 10px rgba(43, 111, 255, 0.32);
+        flex-shrink: 0;
+      }
+
+      .wordmark-shield svg {
+        width: 16px;
+        height: 16px;
+        fill: white;
+      }
+
+      .wordmark-text {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: -0.01em;
       }
 
       h1 {
-        margin-top: 0;
+        margin: 0 0 5px;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
       }
 
-      p {
-        color: #536173;
+      .subtitle {
+        margin: 0 0 20px;
+        color: var(--muted);
+        font-size: 14px;
         line-height: 1.6;
       }
 
-      input {
-        width: 100%;
-        margin-top: 12px;
-        margin-bottom: 14px;
-        padding: 14px 16px;
-        border: 1px solid #d6deeb;
-        border-radius: 14px;
-        font: inherit;
+      /* ── Warning box ── */
+      .warning-box {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        padding: 11px 14px;
+        margin-bottom: 22px;
+        background: var(--review-bg);
+        color: var(--review-ink);
+        border-radius: 11px;
+        font-size: 13px;
+        line-height: 1.55;
+        border: 1px solid rgba(122, 76, 0, 0.16);
       }
 
-      button {
-        min-width: 140px;
+      .warning-box svg {
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      /* ── Label ── */
+      label {
+        display: block;
+        margin-bottom: 7px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      /* ── Input row ── */
+      .input-row {
+        position: relative;
+        margin-bottom: 14px;
+      }
+
+      #api-key {
+        width: 100%;
+        padding: 13px 48px 13px 14px;
+        border: 1.5px solid var(--line);
+        border-radius: 12px;
+        font: inherit;
+        font-size: 14px;
+        color: var(--ink);
+        background: #fafbfc;
+        transition: border-color 140ms ease, box-shadow 140ms ease;
+        outline: none;
+      }
+
+      #api-key:focus {
+        border-color: #2b6fff;
+        box-shadow: 0 0 0 3px rgba(43, 111, 255, 0.14);
+        background: #ffffff;
+      }
+
+      #api-key::placeholder {
+        color: #a0aab8;
+      }
+
+      #toggle-key {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        color: var(--muted);
+        border-radius: 8px;
+        padding: 0;
+        transition: color 120ms ease, background 120ms ease;
+      }
+
+      #toggle-key:hover {
+        color: var(--ink);
+        background: rgba(15, 31, 53, 0.07);
+      }
+
+      #toggle-key svg {
+        width: 17px;
+        height: 17px;
+      }
+
+      /* ── Save button ── */
+      #save {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
         min-height: 44px;
+        padding: 0 22px;
         border: none;
         border-radius: 12px;
-        background: #215df6;
+        background: linear-gradient(135deg, #2b6fff, #1a50d4);
         color: white;
         font: inherit;
+        font-size: 14px;
         font-weight: 700;
         cursor: pointer;
+        box-shadow: 0 3px 12px rgba(43, 111, 255, 0.28);
+        transition: background 140ms ease, box-shadow 140ms ease, transform 100ms ease;
       }
 
+      #save:hover {
+        background: linear-gradient(135deg, #1f5ce8, #1445be);
+        box-shadow: 0 5px 18px rgba(43, 111, 255, 0.36);
+        transform: translateY(-1px);
+      }
+
+      #save:active {
+        transform: translateY(0);
+        opacity: 0.9;
+      }
+
+      /* ── Status box ── */
       #status {
+        display: none;
+        align-items: center;
+        gap: 8px;
         margin-top: 14px;
-        min-height: 22px;
-        color: #0d5e39;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
         font-weight: 600;
+        animation: fadeIn 180ms ease;
       }
 
-      code {
-        background: #eef3ff;
-        padding: 2px 6px;
-        border-radius: 8px;
+      #status.success {
+        display: flex;
+        background: var(--safe-bg);
+        color: var(--safe-ink);
+        border: 1px solid rgba(10, 92, 53, 0.18);
+      }
+
+      #status.error {
+        display: flex;
+        background: var(--danger-bg);
+        color: var(--danger-ink);
+        border: 1px solid rgba(153, 31, 28, 0.18);
+      }
+
+      #status svg {
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Divider + footer ── */
+      hr {
+        margin: 24px 0;
+        border: none;
+        border-top: 1px solid var(--line);
+      }
+
+      .page-footer {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      :focus-visible {
+        outline: 2px solid #2b6fff;
+        outline-offset: 2px;
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>SignSafe Settings</h1>
-      <p>
-        Save an OpenAI API key here to enable live transaction analysis. The key is stored locally in
-        <code>chrome.storage.local</code>.
-      </p>
-      <p style="color:#8f5b00; background:#fff0bf; border-radius:10px; padding:10px 14px; font-size:13px;">
-        Use a project-scoped OpenAI key with a spend limit. Never share or commit your API key.
-      </p>
+      <div class="wordmark">
+        <div class="wordmark-shield">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"/>
+          </svg>
+        </div>
+        <span class="wordmark-text">SignSafe</span>
+      </div>
+
+      <h1>Settings</h1>
+      <p class="subtitle">SignSafe uses OpenAI to analyze transactions before you sign. Add an API key to enable live analysis.</p>
+
+      <div class="warning-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Use a project-scoped key with a spend limit. The key is stored locally and never leaves your browser except to call OpenAI.</span>
+      </div>
+
       <label for="api-key">OpenAI API key</label>
-      <input id="api-key" type="password" placeholder="sk-..." autocomplete="off" />
+      <div class="input-row">
+        <input id="api-key" type="password" placeholder="sk-proj-..." autocomplete="off" spellcheck="false" />
+        <button id="toggle-key" type="button" aria-label="Show API key">
+          <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+
       <button id="save" type="button">Save key</button>
-      <div id="status"></div>
+
+      <div id="status" role="status" aria-live="polite"></div>
+
+      <hr />
+      <div class="page-footer">SignSafe v0.1.0</div>
     </main>
     <script src="shared/constants.js"></script>
     <script src="src/options/options.js"></script>
