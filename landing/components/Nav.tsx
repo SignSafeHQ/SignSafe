@@ -28,9 +28,7 @@ export default function Nav() {
     >
       <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
         <a href="#" className="flex items-center gap-2.5 group">
-          <span className="text-2xl leading-none" aria-hidden="true">
-            🛡️
-          </span>
+          <img src="/icon.svg" alt="" aria-hidden="true" className="w-6 h-6" />
           <span
             className="text-lg font-bold tracking-tight"
             style={{ color: "#0f1f35" }}
@@ -68,9 +66,7 @@ export default function Nav() {
           className="flex items-center gap-2 px-4 py-2 rounded-btn text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-md active:scale-95"
           style={{ background: "#2b6fff" }}
         >
-          <span className="text-sm leading-none" aria-hidden="true">
-            🛡️
-          </span>
+          <img src="/icon.svg" alt="" aria-hidden="true" className="w-4 h-4" />
           Install free
         </a>
       </div>

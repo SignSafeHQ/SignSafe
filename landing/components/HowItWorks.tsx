@@ -50,7 +50,7 @@ function ArrowRight() {
       height="20"
       viewBox="0 0 24 24"
       fill="none"
-      className="hidden md:block flex-shrink-0"
+      className="hidden md:block shrink-0"
       style={{ color: "rgba(15,31,53,0.18)", marginBottom: "28px" }}
     >
       <path

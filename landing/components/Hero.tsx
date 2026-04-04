@@ -208,9 +208,7 @@ export default function Hero() {
                 border: "1px solid rgba(43,111,255,0.2)",
               }}
             >
-              <span className="leading-none" aria-hidden="true">
-                🛡️
-              </span>
+              <img src="/icon.svg" alt="" aria-hidden="true" className="w-4 h-4" />
               Free Chrome Extension · Solana
             </div>
 

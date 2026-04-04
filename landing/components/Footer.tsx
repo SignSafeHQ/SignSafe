@@ -41,9 +41,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="flex flex-col items-center md:items-start gap-3 text-center md:text-left">
             <a href="#" className="flex items-center gap-2.5">
-              <span className="text-2xl leading-none" aria-hidden="true">
-                🛡️
-              </span>
+              <img src="/icon.svg" alt="" aria-hidden="true" className="w-6 h-6" />
               <span
                 className="text-lg font-bold tracking-tight"
                 style={{ color: "#0f1f35" }}

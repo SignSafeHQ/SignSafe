@@ -93,7 +93,7 @@ function ActionIcon({ risk }: { risk: RiskLevel }) {
         height="15"
         viewBox="0 0 24 24"
         fill="none"
-        className="flex-shrink-0 mt-0.5"
+        className="shrink-0 mt-0.5"
       >
         <circle cx="12" cy="12" r="10" fill="#16a34a" fillOpacity="0.12" />
         <path
@@ -114,7 +114,7 @@ function ActionIcon({ risk }: { risk: RiskLevel }) {
         height="15"
         viewBox="0 0 24 24"
         fill="none"
-        className="flex-shrink-0 mt-0.5"
+        className="shrink-0 mt-0.5"
       >
         <circle cx="12" cy="12" r="10" fill="#d97706" fillOpacity="0.12" />
         <line x1="12" y1="8" x2="12" y2="13" stroke="#d97706" strokeWidth="2" strokeLinecap="round" />
@@ -130,7 +130,7 @@ function ActionIcon({ risk }: { risk: RiskLevel }) {
       height="15"
       viewBox="0 0 24 24"
       fill="none"
-      className="flex-shrink-0 mt-0.5"
+      className="shrink-0 mt-0.5"
     >
       <circle cx="12" cy="12" r="10" fill="#dc2626" fillOpacity="0.12" />
       <path

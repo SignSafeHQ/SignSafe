@@ -117,7 +117,7 @@ export default function Features() {
               }}
             >
               <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: feature.bg, color: feature.color }}
               >
                 {feature.icon}
@@ -148,9 +148,7 @@ export default function Features() {
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
             style={{ background: "linear-gradient(135deg, #2b6fff, #1a4fcc)" }}
           >
-            <span className="text-3xl leading-none" aria-hidden="true">
-              🛡️
-            </span>
+            <img src="/icon.svg" alt="" aria-hidden="true" className="w-8 h-8" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-3">
             Stay safe on Solana
