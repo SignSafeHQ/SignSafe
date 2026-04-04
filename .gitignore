@@ -5,4 +5,4 @@
 landing/node_modules/
 landing/out/
 landing/.next/
-worker/
+api/

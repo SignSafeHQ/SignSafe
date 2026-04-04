@@ -7,7 +7,12 @@
     OVERLAY_CHANNEL: "SIGNSAFE_OVERLAY",
     DEBUG_STORAGE_KEY: "signsafe-debug",
     STORAGE_KEYS: Object.freeze({
-      OPENAI_API_KEY: "openai_api_key"
+      OPENAI_API_KEY: "openai_api_key",
+      SIGNSAFE_API_KEY: "signsafe_api_key",
+      INSTALL_ID: "signsafe_install_id"
+    }),
+    API: Object.freeze({
+      ANALYZE_ENDPOINT: "https://api.signsafe.xyz/v1/analyze"
     }),
     MESSAGE_TYPES: Object.freeze({
       PAGE: Object.freeze({

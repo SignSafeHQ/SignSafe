@@ -15,8 +15,7 @@ const STORAGE_KEYS = CONSTANTS.STORAGE_KEYS || {};
 const DEMO_VERDICTS = SHARED.demoVerdictsById || {};
 
 const RPC_ENDPOINT = "https://api.devnet.solana.com";
-const OPENAI_API = "https://api.openai.com/v1/responses";
-const OPENAI_MODEL = "gpt-5.4-nano";
+const SIGNSAFE_API = CONSTANTS.API?.ANALYZE_ENDPOINT || "https://api.signsafe.xyz/v1/analyze";
 const LARGE_SOL_TRANSFER_THRESHOLD = 1;
 const VERDICT_CACHE_TTL_MS = 60_000;
 
@@ -37,8 +36,7 @@ const KNOWN_PROGRAMS = {
 
 const analysisService = SHARED.createBackgroundAnalysisService({
   rpcEndpoint: RPC_ENDPOINT,
-  openaiApi: OPENAI_API,
-  openaiModel: OPENAI_MODEL,
+  signSafeApi: SIGNSAFE_API,
   largeSolTransferThreshold: LARGE_SOL_TRANSFER_THRESHOLD,
   verdictCacheTtlMs: VERDICT_CACHE_TTL_MS,
   knownPrograms: KNOWN_PROGRAMS,
@@ -103,6 +101,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === "loading") {
     setTabIcon(tabId, "default");
   }
+});
+
+async function ensureInstallId() {
+  const keyName = STORAGE_KEYS.INSTALL_ID || "signsafe_install_id";
+  const stored = await chrome.storage.local.get(keyName);
+  if (!stored?.[keyName]) {
+    await chrome.storage.local.set({ [keyName]: crypto.randomUUID() });
+  }
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  ensureInstallId();
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

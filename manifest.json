@@ -7,7 +7,7 @@
   "host_permissions": [
     "https://api.devnet.solana.com/*",
     "https://api.mainnet-beta.solana.com/*",
-    "https://api.openai.com/*"
+    "https://api.signsafe.xyz/*"
   ],
   "background": {
     "service_worker": "src/background/background.js"

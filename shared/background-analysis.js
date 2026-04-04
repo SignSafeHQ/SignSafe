@@ -4,11 +4,9 @@
 
   shared.createBackgroundAnalysisService = function createBackgroundAnalysisService(config) {
     const verdictCache = new Map();
-    let envLocalApiKeyPromise = null;
 
     const rpcEndpoint = config.rpcEndpoint;
-    const openaiApi = config.openaiApi;
-    const openaiModel = config.openaiModel;
+    const signSafeApi = config.signSafeApi;
     const largeSolTransferThreshold = config.largeSolTransferThreshold;
     const verdictCacheTtlMs = config.verdictCacheTtlMs;
     const knownPrograms = config.knownPrograms || {};
@@ -46,10 +44,10 @@
 
         let verdict = heuristics.baseVerdict;
         if (shouldAskModel(heuristics)) {
-          debugLog("openai start", context?.method);
-          const modelVerdict = await askOpenAI(parsed, heuristics);
+          debugLog("signsafe api start", context?.method);
+          const modelVerdict = await askSignSafeAPI(parsed, heuristics);
           verdict = mergeVerdicts(heuristics, modelVerdict);
-          debugLog("openai complete", context?.method, verdict?.risk);
+          debugLog("signsafe api complete", context?.method, verdict?.risk);
         }
 
         setCachedVerdict(base64Tx, verdict);
@@ -308,85 +306,70 @@
       };
     }
 
-    async function askOpenAI(parsed, heuristics) {
-      const apiKey = await getApiKey();
-
-      if (!apiKey) {
-        debugLog("missing openai api key");
-        return {
-          summary: heuristics.baseVerdict.summary,
-          actions: heuristics.baseVerdict.actions,
-          risk_reasons: heuristics.baseVerdict.risk_reasons,
-          verdict: heuristics.baseVerdict.verdict,
-          source: "heuristics"
-        };
+    async function askSignSafeAPI(parsed, heuristics) {
+      if (!signSafeApi) {
+        debugLog("signsafe api endpoint not configured");
+        return { ...heuristics.baseVerdict, source: "heuristics" };
       }
 
-      const prompt = [
-        "You are a Solana transaction security explainer.",
-        "Use the deterministic facts and reason codes below to explain the transaction to a user.",
-        "Do not invent new facts. Be conservative.",
-        "Return only raw JSON with keys: summary, actions, risk_reasons, verdict.",
-        "",
-        "Structured facts:",
-        JSON.stringify(
-          {
-            intercepted_method: parsed.method,
-            simulation_status: parsed.simulationStatus,
-            reason_codes: heuristics.reasonCodes,
-            facts: heuristics.facts,
-            heuristics_risk: heuristics.risk,
-            heuristic_risk_reasons: heuristics.riskReasons,
-            source_url: parsed.sourceUrl
-          },
-          null,
-          2
-        )
-      ].join("\n");
+      const installId = await getInstallId();
+      const apiKey = await getSignSafeApiKey();
 
-      const data = await fetchJson(
-        openaiApi,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: openaiModel,
-            reasoning: { effort: "medium" },
-            input: prompt,
-            max_output_tokens: 500
-          })
-        },
-        15000
-      );
-
-      if (data?.status === "incomplete") {
-        debugLog("openai incomplete response");
-        return {
-          summary: heuristics.baseVerdict.summary,
-          actions: heuristics.baseVerdict.actions,
-          risk_reasons: heuristics.baseVerdict.risk_reasons,
-          verdict: heuristics.baseVerdict.verdict,
-          source: "heuristics"
-        };
+      const headers = {
+        "Content-Type": "application/json",
+        "X-Install-Id": installId
+      };
+      if (apiKey) {
+        headers["Authorization"] = `Bearer ${apiKey}`;
       }
 
-      const rawText = extractOpenAIText(data);
-      const sanitized = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
+      const body = JSON.stringify({
+        intercepted_method: parsed.method,
+        simulation_status: parsed.simulationStatus,
+        heuristics_risk: heuristics.risk,
+        reason_codes: heuristics.reasonCodes,
+        heuristic_risk_reasons: heuristics.riskReasons,
+        facts: heuristics.facts,
+        source_url: parsed.sourceUrl
+      });
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
-        return JSON.parse(sanitized);
-      } catch (_error) {
-        debugLog("failed to parse openai response");
-        return {
-          summary: heuristics.baseVerdict.summary,
-          actions: heuristics.baseVerdict.actions,
-          risk_reasons: heuristics.baseVerdict.risk_reasons,
-          verdict: heuristics.baseVerdict.verdict,
-          source: "heuristics"
-        };
+        const response = await fetch(signSafeApi, {
+          method: "POST",
+          headers,
+          body,
+          signal: controller.signal
+        });
+
+        if (response.status === 429) {
+          debugLog("signsafe api quota exceeded");
+          let upgradeUrl = "https://signsafe.xyz/pro";
+          try {
+            const data = await response.json();
+            upgradeUrl = data.upgrade_url || upgradeUrl;
+          } catch (_) {}
+          return {
+            ...heuristics.baseVerdict,
+            quota_exhausted: true,
+            upgrade_url: upgradeUrl,
+            source: "heuristics"
+          };
+        }
+
+        if (!response.ok) {
+          debugLog("signsafe api error", response.status);
+          return { ...heuristics.baseVerdict, source: "heuristics" };
+        }
+
+        return await response.json();
+      } catch (error) {
+        debugLog("signsafe api failed", error?.message || String(error));
+        return { ...heuristics.baseVerdict, source: "heuristics" };
+      } finally {
+        clearTimeout(timeoutId);
       }
     }
 
@@ -403,7 +386,9 @@
         source: modelVerdict?.source === "heuristics" ? "heuristics" : "heuristics+model",
         simulation_status: base.simulation_status,
         intercepted_method: base.intercepted_method,
-        facts: base.facts
+        facts: base.facts,
+        quota_exhausted: modelVerdict?.quota_exhausted || false,
+        upgrade_url: modelVerdict?.upgrade_url || null
       };
     }
 
@@ -549,79 +534,20 @@
       return `${value.slice(0, 4)}...${value.slice(-4)}`;
     }
 
-    async function getApiKey() {
-      const keyName = storageKeys.OPENAI_API_KEY || "openai_api_key";
+    async function getInstallId() {
+      const keyName = storageKeys.INSTALL_ID || "signsafe_install_id";
       const result = await chrome.storage.local.get(keyName);
-      const storedKey = safeString(result?.[keyName]);
-      if (storedKey) {
-        return storedKey;
-      }
-
-      return loadApiKeyFromEnvLocal();
+      const id = safeString(result?.[keyName]);
+      if (id) return id;
+      const newId = crypto.randomUUID();
+      await chrome.storage.local.set({ [keyName]: newId });
+      return newId;
     }
 
-    async function loadApiKeyFromEnvLocal() {
-      if (!envLocalApiKeyPromise) {
-        envLocalApiKeyPromise = (async () => {
-          try {
-            const response = await fetch(chrome.runtime.getURL(".env.local"), { cache: "no-store" });
-            if (!response.ok) {
-              debugLog("env.local not available", response.status);
-              return "";
-            }
-
-            const content = await response.text();
-            return parseEnvValue(content, "OPENAI_API_KEY");
-          } catch (error) {
-            debugLog("env.local load failed", error?.message || String(error));
-            return "";
-          }
-        })();
-      }
-
-      return envLocalApiKeyPromise;
-    }
-
-    function parseEnvValue(content, key) {
-      const line = String(content || "")
-        .split(/\r?\n/)
-        .map((entry) => entry.trim())
-        .find((entry) => entry && !entry.startsWith("#") && entry.startsWith(`${key}=`));
-
-      if (!line) {
-        return "";
-      }
-
-      const rawValue = line.slice(key.length + 1).trim();
-      if (
-        (rawValue.startsWith("\"") && rawValue.endsWith("\"")) ||
-        (rawValue.startsWith("'") && rawValue.endsWith("'"))
-      ) {
-        return rawValue.slice(1, -1).trim();
-      }
-
-      return rawValue;
-    }
-
-    function extractOpenAIText(data) {
-      if (!Array.isArray(data?.output)) {
-        return "";
-      }
-
-      const parts = [];
-      for (const item of data.output) {
-        if (!Array.isArray(item?.content)) {
-          continue;
-        }
-
-        for (const content of item.content) {
-          if (content?.type === "output_text" && typeof content.text === "string") {
-            parts.push(content.text);
-          }
-        }
-      }
-
-      return parts.join("\n").trim();
+    async function getSignSafeApiKey() {
+      const keyName = storageKeys.SIGNSAFE_API_KEY || "signsafe_api_key";
+      const result = await chrome.storage.local.get(keyName);
+      return safeString(result?.[keyName]);
     }
 
     function getCachedVerdict(key) {

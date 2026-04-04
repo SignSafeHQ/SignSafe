@@ -9,7 +9,7 @@ const nextSteps = document.getElementById("next-steps");
 const reloadExtBtn = document.getElementById("reload-ext");
 
 const STORAGE_KEYS = globalThis.SIGNSAFE_SHARED?.constants?.STORAGE_KEYS || {};
-const API_KEY_STORAGE_KEY = STORAGE_KEYS.OPENAI_API_KEY || "openai_api_key";
+const API_KEY_STORAGE_KEY = STORAGE_KEYS.SIGNSAFE_API_KEY || "signsafe_api_key";
 
 const EYE_OPEN = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
 const EYE_CLOSED = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
@@ -51,12 +51,11 @@ async function save() {
   if (!validateKeyFormat()) return;
   await chrome.storage.local.set({ [API_KEY_STORAGE_KEY]: key });
   if (key) {
-    showStatus("success", "Key saved. Live analysis is ready.");
-    nextSteps.classList.add("visible");
+    showStatus("success", "Pro key saved. Unlimited AI analysis active.");
   } else {
-    showStatus("error", "Key cleared. Analysis will be unavailable.");
-    nextSteps.classList.remove("visible");
+    showStatus("success", "Key cleared. Free tier (5 scans/day) is active.");
   }
+  nextSteps.classList.add("visible");
 }
 
 async function testConnection() {
@@ -70,20 +69,20 @@ async function testConnection() {
   showStatus("testing", "Testing connection…");
 
   try {
-    const res = await fetch("https://api.openai.com/v1/models", {
+    const res = await fetch("https://api.signsafe.xyz/v1/ping", {
       headers: { Authorization: `Bearer ${key}` }
     });
 
     if (res.ok) {
-      showStatus("success", "✓ Key accepted by OpenAI.");
+      showStatus("success", "✓ Pro key accepted.");
       nextSteps.classList.add("visible");
     } else if (res.status === 401) {
-      showStatus("error", "✗ OpenAI rejected this key (401 Unauthorized).");
+      showStatus("error", "✗ Key not recognized (401 Unauthorized).");
     } else {
-      showStatus("error", `✗ OpenAI returned status ${res.status}.`);
+      showStatus("error", `✗ SignSafe API returned status ${res.status}.`);
     }
   } catch (_err) {
-    showStatus("error", "✗ Could not reach OpenAI. Check your network.");
+    showStatus("error", "✗ Could not reach SignSafe API. Check your network.");
   } finally {
     testButton.disabled = false;
   }
@@ -96,8 +95,8 @@ function validateKeyFormat() {
     apiKeyInput.classList.remove("invalid");
     return true;
   }
-  if (!key.startsWith("sk-")) {
-    keyHint.textContent = "This doesn't look like an OpenAI key — they start with sk-";
+  if (!key.startsWith("ssk-")) {
+    keyHint.textContent = "SignSafe Pro keys start with ssk-";
     apiKeyInput.classList.add("invalid");
     return false;
   }
