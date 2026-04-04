@@ -50,11 +50,15 @@
     return { family: "system", type: `SYSTEM_UNKNOWN_${kind}` };
   }
 
-  function decodeSplTokenInstruction(data) {
+  function decodeSplTokenInstruction(programId, data) {
     if (!data || data.length < 1) {
       return { family: "spl_token", type: "SPL_UNKNOWN", raw: "empty" };
     }
     const tag = data[0];
+    // Token-2022 extension instructions (see spl_token-2022 program)
+    if (programId === SPL_TOKEN_2022 && tag === 35) {
+      return { family: "spl_token_2022", type: "INITIALIZE_PERMANENT_DELEGATE" };
+    }
     const u64At1 = data.length >= 9 ? readU64LE(data, 1) : 0n;
     const amountNum = Number(u64At1);
     const isUnlimited = u64At1 === U64_MAX_BIG;
@@ -112,7 +116,7 @@
       return decodeSystemInstruction(data);
     }
     if (programId === SPL_TOKEN || programId === SPL_TOKEN_2022) {
-      return decodeSplTokenInstruction(data);
+      return decodeSplTokenInstruction(programId, data);
     }
     if (programId === MEMO_PROGRAM) {
       return decodeMemoInstruction(data);

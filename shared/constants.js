@@ -7,7 +7,6 @@
     OVERLAY_CHANNEL: "SIGNSAFE_OVERLAY",
     DEBUG_STORAGE_KEY: "signsafe-debug",
     STORAGE_KEYS: Object.freeze({
-      OPENAI_API_KEY: "openai_api_key",
       SIGNSAFE_API_KEY: "signsafe_api_key",
       INSTALL_ID: "signsafe_install_id"
     }),
@@ -32,8 +31,7 @@
       }),
       RUNTIME: Object.freeze({
         SET_DEBUG: "SET_DEBUG",
-        ANALYZE_TX: "ANALYZE_TX",
-        RUN_DEMO_ANALYSIS: "RUN_DEMO_ANALYSIS"
+        ANALYZE_TX: "ANALYZE_TX"
       })
     })
   });

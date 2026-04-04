@@ -3,7 +3,7 @@
   "name": "SignSafe",
   "version": "0.1.0",
   "description": "Understand any Solana transaction before you sign it.",
-  "permissions": ["storage", "scripting"],
+  "permissions": ["storage"],
   "host_permissions": [
     "https://api.devnet.solana.com/*",
     "https://api.mainnet-beta.solana.com/*",
@@ -36,7 +36,6 @@
     {
       "resources": [
         "shared/constants.js",
-        "shared/demo-fixtures.js",
         "shared/page-helpers.js",
         "shared/overlay-helpers.js",
         "src/page/page-hook.js",

@@ -2,7 +2,6 @@ try {
   importScripts(
     "../../vendor/solana-web3.iife.js",
     "../../shared/constants.js",
-    "../../shared/demo-fixtures.js",
     "../../shared/ix-semantics.js",
     "../../shared/tx-decode.js",
     "../../shared/background-analysis.js"
@@ -15,7 +14,6 @@ const SHARED = self.SIGNSAFE_SHARED || {};
 const CONSTANTS = SHARED.constants || {};
 const RUNTIME_MESSAGE_TYPES = CONSTANTS.MESSAGE_TYPES?.RUNTIME || {};
 const STORAGE_KEYS = CONSTANTS.STORAGE_KEYS || {};
-const DEMO_VERDICTS = SHARED.demoVerdictsById || {};
 
 const RPC_ENDPOINT = "https://api.devnet.solana.com";
 const SIGNSAFE_API = CONSTANTS.API?.ANALYZE_ENDPOINT || "https://api.signsafe.xyz/v1/analyze";
@@ -162,18 +160,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         );
       });
     return true;
-  }
-
-  if (message.type === (RUNTIME_MESSAGE_TYPES.RUN_DEMO_ANALYSIS || "RUN_DEMO_ANALYSIS")) {
-    sendResponse(
-      DEMO_VERDICTS[message.demoId] ||
-        analysisService.buildReviewVerdict(
-          "Unknown demo fixture.",
-          analysisService.buildFallbackFacts({}),
-          ["unknown_fixture"]
-        )
-    );
-    return false;
   }
 
   return false;

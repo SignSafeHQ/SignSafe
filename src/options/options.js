@@ -27,7 +27,7 @@ apiKeyInput.addEventListener("blur", validateKeyFormat);
 // Open demo page link
 const openDemoLink = document.getElementById("open-demo");
 if (openDemoLink) {
-  openDemoLink.href = chrome.runtime.getURL("demo.html");
+  openDemoLink.href = "https://signsafe.xyz";
 }
 
 // Reload extension

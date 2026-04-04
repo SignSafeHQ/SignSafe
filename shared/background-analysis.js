@@ -275,6 +275,55 @@
           addReason(reasonCodes, riskReasons, "close_account_rent",
             "An account is closed and its rent lamports are redirected.");
         }
+
+        // Unlimited SPL token delegation (Approve / ApproveChecked with u64::MAX)
+        const hasUnlimitedApprove = shadow.semantics.some(
+          (s) =>
+            (s.semantic?.type === "APPROVE_CHECKED" || s.semantic?.type === "APPROVE") &&
+            s.semantic?.isUnlimited
+        );
+        if (hasUnlimitedApprove) {
+          risk = maxRisk(risk, "danger");
+          addReason(reasonCodes, riskReasons, "unlimited_token_delegation",
+            "Transaction grants unlimited token spending rights to a third party.");
+        }
+
+        // Mint or account authority transfer
+        if (semTypes.includes("SET_AUTHORITY")) {
+          risk = maxRisk(risk, "danger");
+          addReason(reasonCodes, riskReasons, "authority_transfer",
+            "Transaction changes mint or token account authority.");
+        }
+
+        // Token-2022 PermanentDelegate extension
+        if (semTypes.includes("INITIALIZE_PERMANENT_DELEGATE")) {
+          risk = maxRisk(risk, "danger");
+          addReason(reasonCodes, riskReasons, "permanent_delegate_extension",
+            "Token-2022 PermanentDelegate lets a third party move tokens without your signature on each transaction.");
+        }
+
+        const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+        const token2022UnknownIx = shadow.semantics.some(
+          (s) =>
+            s.programId === TOKEN_2022_PROGRAM &&
+            typeof s.semantic?.type === "string" &&
+            s.semantic.type.startsWith("SPL_UNKNOWN_")
+        );
+        if (token2022UnknownIx) {
+          risk = maxRisk(risk, "review");
+          addReason(reasonCodes, riskReasons, "token2022_unknown_extension",
+            "Transaction uses a Token-2022 instruction that may enable hidden token controls.");
+        }
+
+        // STMT-style multi-asset: several SPL transfers + SOL movement + net token inflow (simulation aggregates all accounts)
+        const transferCheckedCount = shadow.semantics.filter(
+          (s) => s.semantic?.type === "TRANSFER_CHECKED"
+        ).length;
+        if (transferCheckedCount >= 2 && facts.totalSolOut > 0 && facts.totalTokenIn > 0) {
+          risk = maxRisk(risk, "danger");
+          addReason(reasonCodes, riskReasons, "multi_asset_spl_bundle",
+            "Multiple SPL transfers and SOL movement in one transaction — verify every recipient.");
+        }
       }
 
       const summary = buildHeuristicSummary(parsed, facts, reasonCodes);
@@ -455,11 +504,21 @@
       return typeof status === "number" && status >= 500;
     }
 
+    function normalizeRiskTier(value) {
+      const v = typeof value === "string" ? value.trim() : "";
+      if (v === "safe" || v === "review" || v === "danger") {
+        return v;
+      }
+      return null;
+    }
+
     function mergeVerdicts(heuristics, modelVerdict) {
       const base = heuristics.baseVerdict;
+      const modelTier = normalizeRiskTier(modelVerdict?.risk);
+      const mergedRisk = modelTier ? maxRisk(base.risk, modelTier) : base.risk;
 
       return {
-        risk: base.risk,
+        risk: mergedRisk,
         summary: safeString(modelVerdict?.summary) || base.summary,
         actions: normalizeStringArray(modelVerdict?.actions, base.actions),
         risk_reasons: normalizeStringArray(modelVerdict?.risk_reasons, base.risk_reasons),
