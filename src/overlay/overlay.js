@@ -52,7 +52,11 @@
   });
 
   document.getElementById("btn-proceed").addEventListener("click", () => {
-    if (currentRisk === "review" || currentRisk === "danger") {
+    if (currentRisk === "danger") {
+      // Danger requires checkbox acknowledgment — expand advanced options
+      if (!advOpen) toggleAdvContent();
+      document.getElementById("adv-content")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } else if (currentRisk === "review") {
       showConfirmOverlay();
     } else {
       emitDecision(true, currentSessionId);
@@ -87,11 +91,10 @@
 
     setRiskState("scan");
     hideElement("risk-headline");
+    hideElement("risk-badge");
     showElement("rh-loading");
-    hideElement("verdict-callout");
     hideElement("adv-toggle");
     hideElement("adv-content");
-    hideElement("wallet-chip");
     hideElement("batch-area");
     showActionListSkeletons();
 
@@ -129,9 +132,15 @@
       setTimeout(() => panel.classList.remove("shake"), 400);
     }
 
-    // Risk kicker text
+    // Risk kicker + badge
     const kickers = { safe: "No risk detected", review: "Review recommended", danger: "Threat detected" };
     setText("kicker-text", kickers[risk] || "Analysis complete");
+    const badges = { safe: "SAFE", review: "REVIEW", danger: "DANGER" };
+    const badge = document.getElementById("risk-badge");
+    if (badge) {
+      badge.textContent = badges[risk] || risk.toUpperCase();
+      badge.className = `risk-badge risk-badge--${risk}`;
+    }
 
     // Headline (DM Serif Display)
     setText("risk-headline", verdict.summary || "Unable to analyze this transaction clearly.");
@@ -177,6 +186,7 @@
     setRiskState("safe");
     hideElement("rh-loading");
     hideElement("risk-headline");
+    hideElement("risk-badge");
     hideElement("adv-toggle");
     hideElement("adv-content");
 
@@ -368,6 +378,12 @@
   // ─── Confirm overlay ──────────────────────────────────────────────────────
 
   function showConfirmOverlay() {
+    const bodyEl = document.getElementById("confirm-body");
+    if (bodyEl) {
+      bodyEl.textContent = currentRisk === "review"
+        ? "SignSafe flagged concerns with this transaction. Only proceed if you personally trust this site."
+        : "This program has not been verified. Only proceed if you personally trust this project.";
+    }
     const overlay = document.getElementById("confirm-overlay");
     overlay.classList.remove("hidden");
     document.getElementById("btn-confirm-back").focus();
