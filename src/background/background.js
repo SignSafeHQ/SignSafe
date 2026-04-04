@@ -1,7 +1,10 @@
 try {
   importScripts(
+    "../../vendor/solana-web3.iife.js",
     "../../shared/constants.js",
     "../../shared/demo-fixtures.js",
+    "../../shared/ix-semantics.js",
+    "../../shared/tx-decode.js",
     "../../shared/background-analysis.js"
   );
 } catch (_error) {

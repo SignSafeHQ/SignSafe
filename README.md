@@ -1,6 +1,6 @@
 # SignSafe
 
-SignSafe is a Chrome extension that intercepts Solana wallet signing requests, simulates the transaction, asks OpenAI for a plain-English risk verdict, and shows the user the result before the wallet popup appears.
+SignSafe is a Chrome extension that intercepts Solana wallet signing requests, simulates each transaction on Solana RPC, applies deterministic risk heuristics, and (for successful simulations) asks the SignSafe API for a plain-English explanation before the wallet popup appears.
 
 ## Structure
 
@@ -10,6 +10,7 @@ SignSafe is a Chrome extension that intercepts Solana wallet signing requests, s
 - `src/overlay/` contains the overlay runtime script used by `overlay.html`.
 - `src/demo/` and `src/options/` contain the extension page scripts.
 - `shared/` contains cross-surface constants, fixtures, parsing, formatting, and helper logic.
+- `vendor/solana-web3.iife.js` is a bundled `@solana/web3.js` build for Layer 1 instruction decode in the service worker. Regenerate from `extension/` with `npm run vendor:web3` (requires `npm install` once).
 - Root HTML/CSS files remain extension entry documents referenced directly by Chrome.
 
 ## Load Unpacked
@@ -17,8 +18,20 @@ SignSafe is a Chrome extension that intercepts Solana wallet signing requests, s
 1. Open `chrome://extensions`.
 2. Enable Developer Mode.
 3. Click **Load unpacked** and select the `extension/` folder.
-4. Open the SignSafe extension details and set an OpenAI API key through **Extension options**.
+4. Open the SignSafe extension details and set your SignSafe API key through **Extension options** (optional for local/dev flows if your backend accepts anonymous requests).
 5. Open a Solana dApp and trigger a wallet signature request.
+
+## How Analysis Works
+
+For transaction signatures (`signTransaction`, `signAllTransactions`, `sendTransaction`, `signAndSendTransaction`), SignSafe:
+
+1. Simulates the transaction in the background worker.
+2. Extracts structured facts (SOL/token deltas, touched programs, simulation status).
+3. Applies deterministic heuristics to produce a baseline risk verdict.
+4. Calls the SignSafe API (`/v1/analyze`) for user-facing explanation text when simulation succeeds.
+5. Falls back to heuristic-only output when the API is unavailable or rate-limited.
+
+For message signatures (`signMessage`), no on-chain simulation is possible, so SignSafe shows a dedicated blind-signature warning flow.
 
 ## Demo Page
 

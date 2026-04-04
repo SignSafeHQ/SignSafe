@@ -1,14 +1,1 @@
-.env.local
-.claude/
-.codex/
-/api/
-/landing/
-/demo/
-/docs/
-/AGENTS.md
-/CLAUDE.md
-.wrangler/
 node_modules/
-dist/
-out/
-.next/

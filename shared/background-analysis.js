@@ -37,6 +37,25 @@
       }
 
       try {
+        if (typeof shared.txDecode?.decodeTransactionShadow === "function") {
+          try {
+            const shadow = shared.txDecode.decodeTransactionShadow(base64Tx);
+            if (shadow.ok) {
+              debugLog(
+                "tx_decode_shadow",
+                context?.method,
+                shadow.instructionCount,
+                shadow.programIds?.length ?? 0,
+                shadow.accountKeysError || ""
+              );
+            } else {
+              debugLog("tx_decode_shadow_error", context?.method, shadow.error);
+            }
+          } catch (decodeErr) {
+            debugLog("tx_decode_shadow_failed", context?.method, decodeErr?.message || String(decodeErr));
+          }
+        }
+
         debugLog("simulate start", context?.method);
         const simulation = await simulateTransaction(base64Tx);
         debugLog("simulate complete", context?.method);
