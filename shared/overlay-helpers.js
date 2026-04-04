@@ -106,12 +106,12 @@
 
   function phaseLabel(phase) {
     const labels = {
-      simulate: "Simulating transaction",
-      rules: "Running deterministic checks",
-      model: "Generating explanation",
-      batch: "Analyzing batch",
-      message: "Reviewing message",
-      review: "Preparing review"
+      simulate: "Checking on-chain...",
+      rules: "Running safety checks...",
+      model: "Reading contracts...",
+      batch: "Analyzing batch...",
+      message: "Reviewing message...",
+      review: "Preparing review..."
     };
     return labels[phase] || "Preparing";
   }

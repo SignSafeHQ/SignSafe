@@ -26,12 +26,12 @@
           <div id="step-bar">
             <div class="step active" id="step-simulate">
               <div class="step-dot"></div>
-              <span>Simulating</span>
+              <span>Checking on-chain</span>
             </div>
             <div class="step-line"></div>
             <div class="step" id="step-ai">
               <div class="step-dot"></div>
-              <span>Asking AI</span>
+              <span>Reading contracts</span>
             </div>
           </div>
           <h1 id="loading-title">Analyzing transaction</h1>
@@ -49,13 +49,13 @@
           </div>
           <div id="verdict-body">
             <p id="verdict-text" class="verdict-callout"></p>
-            <section id="findings-section">
-              <div class="section-label">Top findings</div>
-              <div class="list-card findings-card"><ul id="findings-list"></ul></div>
-            </section>
             <section id="impact-section">
               <div class="section-label">Expected asset changes</div>
               <div id="impact-grid" class="impact-grid"></div>
+            </section>
+            <section id="findings-section">
+              <div class="section-label">Top findings</div>
+              <div class="list-card findings-card"><ul id="findings-list"></ul></div>
             </section>
             <details id="debug-details" class="debug-details">
               <summary>Show technical details</summary>

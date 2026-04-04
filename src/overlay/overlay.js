@@ -114,7 +114,8 @@
       stampEl.innerHTML = riskStampInner(risk);
     }
 
-    setText("method-badge", method ? shortMethodLabel(method) : "");
+    const methodShort = shortMethodLabel(method);
+    setText("method-badge", methodShort && methodShort !== "Transaction" ? methodShort : "");
     setText("progress-label", meta && meta.total > 1 ? `Transaction ${meta.current} of ${meta.total}` : "");
     setText("summary", verdict.summary || "Unable to analyze this transaction clearly.");
 
