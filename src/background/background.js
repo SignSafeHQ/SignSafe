@@ -135,6 +135,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     debugLog("received ANALYZE_TX", message.method, sender?.url || "");
     analysisService
       .analyzeTransaction(message.tx, {
+        tabId,
         method: message.method || "signTransaction",
         sourceUrl: message.sourceUrl || sender?.url || ""
       })
@@ -148,6 +149,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           analysisService.buildReviewVerdict(
             "Could not complete transaction analysis. Proceed with caution.",
             analysisService.buildFallbackFacts({
+              tabId,
               method: message.method || "signTransaction",
               sourceUrl: message.sourceUrl || sender?.url || ""
             }),

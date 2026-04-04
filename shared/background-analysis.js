@@ -4,6 +4,7 @@
 
   shared.createBackgroundAnalysisService = function createBackgroundAnalysisService(config) {
     const verdictCache = new Map();
+    const stagedFlowCache = new Map();
 
     const rpcEndpoint = config.rpcEndpoint;
     const signSafeApi = config.signSafeApi;
@@ -13,6 +14,11 @@
     const knownPrograms = config.knownPrograms || {};
     const storageKeys = config.storageKeys || {};
     const debugLog = typeof config.debugLog === "function" ? config.debugLog : () => {};
+    const STAGED_FLOW_CACHE_TTL_MS = 30_000;
+    const STAGED_FLOW_PATTERN = "scenario_2_wormhole_like";
+    const STAGED_FLOW_MIN_SOL = 0.001;
+    const STAGED_FLOW_MAX_SOL = 0.002;
+    const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
 
     return {
       analyzeTransaction,
@@ -30,7 +36,8 @@
         );
       }
 
-      const cached = getCachedVerdict(base64Tx);
+      const cacheKey = buildVerdictCacheKey(base64Tx, context);
+      const cached = getCachedVerdict(cacheKey);
       if (cached) {
         debugLog("cache hit", context?.method);
         return cached;
@@ -62,7 +69,11 @@
           debugLog("signsafe api complete", context?.method, verdict?.risk);
         }
 
-        setCachedVerdict(base64Tx, verdict);
+        if (shouldCacheVerdict(verdict)) {
+          setCachedVerdict(cacheKey, verdict);
+        } else {
+          verdictCache.delete(cacheKey);
+        }
         return verdict;
       } catch (error) {
         debugLog("analysis failed", context?.method, error.message);
@@ -163,6 +174,7 @@
 
       return {
         sourceUrl: context?.sourceUrl || "",
+        tabId: Number.isInteger(context?.tabId) ? context.tabId : null,
         method: context?.method || "signTransaction",
         error: value.err || null,
         unitsConsumed: value.unitsConsumed ?? null,
@@ -192,7 +204,7 @@
     }
 
     function evaluateRisk(parsed, shadow) {
-      const facts = buildFacts(parsed);
+      const facts = buildFacts(parsed, shadow);
       const reasonCodes = [];
       const riskReasons = [];
       const actions = buildHumanActions(parsed, facts);
@@ -236,6 +248,9 @@
       // Per-instruction semantic signals from shadow decode
       if (shadow?.ok && Array.isArray(shadow.semantics)) {
         const semTypes = shadow.semantics.map((s) => s.semantic?.type).filter(Boolean);
+        const hasSystemTransfer = shadow.semantics.some(
+          (s) => s.programId === SYSTEM_PROGRAM_ID && s.semantic?.type === "TRANSFER"
+        );
 
         // SOL drain: SOL leaves with no token received. Fires regardless of other instructions (memo decoys, etc.).
         const hasSolTransfer = semTypes.includes("TRANSFER");
@@ -274,16 +289,26 @@
             "An account is closed and its rent lamports are redirected.");
         }
 
-        // Unlimited SPL token delegation (Approve / ApproveChecked with u64::MAX)
-        const hasUnlimitedApprove = shadow.semantics.some(
-          (s) =>
-            (s.semantic?.type === "APPROVE_CHECKED" || s.semantic?.type === "APPROVE") &&
-            s.semantic?.isUnlimited
+        // SPL token delegation (Approve / ApproveChecked — any amount)
+        // Even a "scoped" approve grants a third party the ability to spend your tokens without further consent.
+        const hasAnyApprove = shadow.semantics.some(
+          (s) => s.semantic?.type === "APPROVE_CHECKED" || s.semantic?.type === "APPROVE"
         );
-        if (hasUnlimitedApprove) {
+        if (hasAnyApprove) {
+          const isUnlimited = shadow.semantics.some(
+            (s) =>
+              (s.semantic?.type === "APPROVE_CHECKED" || s.semantic?.type === "APPROVE") &&
+              s.semantic?.isUnlimited
+          );
           risk = maxRisk(risk, "danger");
-          addReason(reasonCodes, riskReasons, "unlimited_token_delegation",
-            "Transaction grants unlimited token spending rights to a third party.");
+          addReason(
+            reasonCodes,
+            riskReasons,
+            isUnlimited ? "unlimited_token_delegation" : "token_delegation",
+            isUnlimited
+              ? "Transaction grants unlimited token spending rights to a third party."
+              : "Transaction grants a third party the right to spend tokens from your wallet."
+          );
         }
 
         // Mint or account authority transfer to a new pubkey (revoking authority is not flagged)
@@ -339,6 +364,30 @@
           addReason(reasonCodes, riskReasons, "mint_and_drain_bundle",
             "Transaction mints tokens and immediately transfers them alongside SOL movement — a multi-asset drain pattern.");
         }
+
+        const stagedFlowMatch = detectScenario2WormholeLike(parsed, facts, shadow, hasSystemTransfer);
+        if (stagedFlowMatch) {
+          facts.flow_context = stagedFlowMatch.pattern;
+          facts.memo_preview = stagedFlowMatch.memoPreview;
+          risk = maxRisk(risk, "danger");
+
+          if (consumeStagedFlowConfirmation(parsed, stagedFlowMatch)) {
+            addReason(
+              reasonCodes,
+              riskReasons,
+              "staged_flow_confirmed",
+              "This request follows a prior bridge-relayer-fee request from the same page, confirming a staged multi-step flow."
+            );
+          } else {
+            addReason(
+              reasonCodes,
+              riskReasons,
+              "staged_flow_suspected",
+              "This request matches a staged bridge-relayer-fee pattern; the site may ask for another signature immediately after this one."
+            );
+            rememberStagedFlowCandidate(parsed, stagedFlowMatch);
+          }
+        }
       }
 
       const summary = buildHeuristicSummary(parsed, facts, reasonCodes);
@@ -369,7 +418,7 @@
       };
     }
 
-    function buildFacts(parsed) {
+    function buildFacts(parsed, shadow) {
       const solFacts = parsed.solChanges.map((change) => ({
         account: `#${change.accountIndex}`,
         deltaSol: change.deltaSol,
@@ -405,6 +454,8 @@
         warnings.push(`Simulation consumed ${parsed.unitsConsumed} compute units.`);
       }
 
+      const memoPreview = extractMemoPreview(shadow);
+
       return {
         sol_changes: solFacts,
         token_changes: tokenFacts,
@@ -422,7 +473,9 @@
         unknownPrograms,
         warnings,
         rawMessagePreview: null,
-        message_preview: ""
+        message_preview: "",
+        memo_preview: memoPreview,
+        flow_context: ""
       };
     }
 
@@ -531,12 +584,18 @@
       const base = heuristics.baseVerdict;
       const modelTier = normalizeRiskTier(modelVerdict?.risk);
       const mergedRisk = modelTier ? maxRisk(base.risk, modelTier) : base.risk;
+      const preserveHeuristicSummary =
+        heuristics.reasonCodes.includes("staged_flow_suspected") ||
+        heuristics.reasonCodes.includes("staged_flow_confirmed");
 
       return {
         risk: mergedRisk,
-        summary: safeString(modelVerdict?.summary) || base.summary,
+        summary: preserveHeuristicSummary ? base.summary : safeString(modelVerdict?.summary) || base.summary,
         actions: normalizeStringArray(modelVerdict?.actions, base.actions),
-        risk_reasons: normalizeStringArray(modelVerdict?.risk_reasons, base.risk_reasons),
+        risk_reasons: dedupeStrings([
+          ...normalizeStringArray(modelVerdict?.risk_reasons, []),
+          ...base.risk_reasons
+        ]),
         verdict: safeString(modelVerdict?.verdict) || base.verdict,
         reason_codes: heuristics.reasonCodes.slice(),
         source: modelVerdict?.source === "heuristics" ? "heuristics" : "heuristics+model",
@@ -582,6 +641,14 @@
     function buildHeuristicSummary(parsed, facts, reasonCodes) {
       if (parsed.simulationStatus === "failed") {
         return "The transaction could not be simulated successfully, so its effects are uncertain.";
+      }
+
+      if (reasonCodes.includes("staged_flow_confirmed")) {
+        return "This request follows an earlier bridge-relayer-fee prompt from the same page, confirming a staged multi-step flow.";
+      }
+
+      if (reasonCodes.includes("staged_flow_suspected")) {
+        return "This looks like step 1 of a staged bridge-relayer-fee flow and the site may ask for another signature immediately.";
       }
 
       if (reasonCodes.includes("token_drain_pattern")) {
@@ -647,6 +714,8 @@
         warnings: [],
         rawMessagePreview: null,
         message_preview: "",
+        memo_preview: "",
+        flow_context: "",
         source_url: context?.sourceUrl || ""
       };
     }
@@ -654,6 +723,11 @@
     function maxRisk(left, right) {
       const order = { safe: 0, review: 1, danger: 2 };
       return order[right] > order[left] ? right : left;
+    }
+
+    function shouldCacheVerdict(verdict) {
+      const reasonCodes = Array.isArray(verdict?.reason_codes) ? verdict.reason_codes : [];
+      return !reasonCodes.includes("staged_flow_suspected") && !reasonCodes.includes("staged_flow_confirmed");
     }
 
     function addReason(reasonCodes, riskReasons, code, sentence) {
@@ -680,6 +754,148 @@
 
     function safeString(value) {
       return typeof value === "string" ? value.trim() : "";
+    }
+
+    function extractMemoPreview(shadow) {
+      if (!shadow?.ok || !Array.isArray(shadow.semantics)) {
+        return "";
+      }
+
+      for (const entry of shadow.semantics) {
+        const preview = safeString(entry?.semantic?.preview);
+        if (entry?.semantic?.family === "memo" && preview) {
+          return preview;
+        }
+      }
+
+      return "";
+    }
+
+    function detectScenario2WormholeLike(parsed, facts, shadow, hasSystemTransfer) {
+      if (!shadow?.ok || !Array.isArray(shadow.semantics) || !hasSystemTransfer) {
+        return null;
+      }
+
+      const hasMemo = shadow.semantics.some((entry) => entry?.semantic?.family === "memo");
+      if (!hasMemo) {
+        return null;
+      }
+
+      if (facts.totalSolOut < STAGED_FLOW_MIN_SOL || facts.totalSolOut > STAGED_FLOW_MAX_SOL) {
+        return null;
+      }
+
+      if (facts.totalTokenIn !== 0 || facts.totalTokenOut !== 0) {
+        return null;
+      }
+
+      const memoPreview = safeString(facts.memo_preview || extractMemoPreview(shadow));
+      if (!memoPreview) {
+        return null;
+      }
+
+      const lowerMemo = memoPreview.toLowerCase();
+      const hasBridgeToken = matchesAny(lowerMemo, ["wormhole", "portal", "bridge"]);
+      const hasFeeToken = matchesAny(lowerMemo, ["relay", "relayer", "fee"]);
+      const hasRouteToken = matchesAny(lowerMemo, ["sol→eth", "sol->eth", "route"]);
+
+      if (!hasBridgeToken || !hasFeeToken || !hasRouteToken) {
+        return null;
+      }
+
+      return {
+        pattern: STAGED_FLOW_PATTERN,
+        feeAmount: facts.totalSolOut,
+        memoPreview,
+        origin: getSourceOrigin(parsed.sourceUrl)
+      };
+    }
+
+    function matchesAny(text, tokens) {
+      return tokens.some((token) => text.includes(token));
+    }
+
+    function buildVerdictCacheKey(base64Tx, context) {
+      const tabId = Number.isInteger(context?.tabId) ? context.tabId : "no-tab";
+      const origin = getSourceOrigin(context?.sourceUrl) || "no-origin";
+      return `${base64Tx}::${tabId}::${origin}`;
+    }
+
+    function buildStagedFlowCacheKey(parsed) {
+      const origin = getSourceOrigin(parsed?.sourceUrl);
+      if (!Number.isInteger(parsed?.tabId) || !origin) {
+        return "";
+      }
+      return `${parsed.tabId}::${origin}`;
+    }
+
+    function getSourceOrigin(value) {
+      const text = safeString(value);
+      if (!text) {
+        return "";
+      }
+
+      try {
+        return new URL(text).origin;
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function getStagedFlowEntry(parsed) {
+      const key = buildStagedFlowCacheKey(parsed);
+      if (!key) {
+        return null;
+      }
+
+      const entry = stagedFlowCache.get(key);
+      if (!entry) {
+        return null;
+      }
+
+      if (Date.now() - entry.timestamp > STAGED_FLOW_CACHE_TTL_MS) {
+        stagedFlowCache.delete(key);
+        return null;
+      }
+
+      return { key, entry };
+    }
+
+    function rememberStagedFlowCandidate(parsed, match) {
+      const key = buildStagedFlowCacheKey(parsed);
+      if (!key || !match?.origin) {
+        return;
+      }
+
+      stagedFlowCache.set(key, {
+        timestamp: Date.now(),
+        origin: match.origin,
+        feeAmount: match.feeAmount,
+        memoPreview: match.memoPreview,
+        pattern: match.pattern
+      });
+    }
+
+    function consumeStagedFlowConfirmation(parsed, match) {
+      const cached = getStagedFlowEntry(parsed);
+      if (!cached) {
+        return false;
+      }
+
+      const { key, entry } = cached;
+      const confirmed =
+        entry.pattern === match.pattern &&
+        entry.origin === match.origin &&
+        entry.memoPreview !== match.memoPreview &&
+        entry.feeAmount >= STAGED_FLOW_MIN_SOL &&
+        entry.feeAmount <= STAGED_FLOW_MAX_SOL;
+
+      if (confirmed) {
+        stagedFlowCache.delete(key);
+        return true;
+      }
+
+      return false;
     }
 
     function shorten(value) {
