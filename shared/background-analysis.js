@@ -7,6 +7,7 @@
 
     const rpcEndpoint = config.rpcEndpoint;
     const signSafeApi = config.signSafeApi;
+    const signSafeApiFallback = config.signSafeApiFallback;
     const largeSolTransferThreshold = config.largeSolTransferThreshold;
     const verdictCacheTtlMs = config.verdictCacheTtlMs;
     const knownPrograms = config.knownPrograms || {};
@@ -333,16 +334,8 @@
         source_url: parsed.sourceUrl
       });
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
       try {
-        const response = await fetch(signSafeApi, {
-          method: "POST",
-          headers,
-          body,
-          signal: controller.signal
-        });
+        const response = await requestSignSafeApi(body, headers);
 
         if (response.status === 429) {
           debugLog("signsafe api quota exceeded");
@@ -368,9 +361,43 @@
       } catch (error) {
         debugLog("signsafe api failed", error?.message || String(error));
         return { ...heuristics.baseVerdict, source: "heuristics" };
+      }
+    }
+
+    async function requestSignSafeApi(body, headers) {
+      try {
+        const primaryResponse = await postSignSafeApi(signSafeApi, body, headers);
+        if (shouldRetryOnFallback(primaryResponse.status) && signSafeApiFallback) {
+          debugLog("retrying signsafe api via fallback endpoint", primaryResponse.status);
+          return await postSignSafeApi(signSafeApiFallback, body, headers);
+        }
+        return primaryResponse;
+      } catch (error) {
+        if (!signSafeApiFallback) {
+          throw error;
+        }
+        debugLog("primary signsafe api unavailable, using fallback", error?.message || String(error));
+        return await postSignSafeApi(signSafeApiFallback, body, headers);
+      }
+    }
+
+    async function postSignSafeApi(url, body, headers) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers,
+          body,
+          signal: controller.signal
+        });
       } finally {
         clearTimeout(timeoutId);
       }
+    }
+
+    function shouldRetryOnFallback(status) {
+      return typeof status === "number" && status >= 500;
     }
 
     function mergeVerdicts(heuristics, modelVerdict) {

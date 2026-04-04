@@ -16,6 +16,8 @@ const DEMO_VERDICTS = SHARED.demoVerdictsById || {};
 
 const RPC_ENDPOINT = "https://api.devnet.solana.com";
 const SIGNSAFE_API = CONSTANTS.API?.ANALYZE_ENDPOINT || "https://api.signsafe.xyz/v1/analyze";
+const SIGNSAFE_API_FALLBACK =
+  CONSTANTS.API?.FALLBACK_ANALYZE_ENDPOINT || "https://signsafe-api.utkuvonarslan.workers.dev/v1/analyze";
 const LARGE_SOL_TRANSFER_THRESHOLD = 1;
 const VERDICT_CACHE_TTL_MS = 60_000;
 
@@ -37,6 +39,7 @@ const KNOWN_PROGRAMS = {
 const analysisService = SHARED.createBackgroundAnalysisService({
   rpcEndpoint: RPC_ENDPOINT,
   signSafeApi: SIGNSAFE_API,
+  signSafeApiFallback: SIGNSAFE_API_FALLBACK,
   largeSolTransferThreshold: LARGE_SOL_TRANSFER_THRESHOLD,
   verdictCacheTtlMs: VERDICT_CACHE_TTL_MS,
   knownPrograms: KNOWN_PROGRAMS,

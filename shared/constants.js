@@ -12,7 +12,10 @@
       INSTALL_ID: "signsafe_install_id"
     }),
     API: Object.freeze({
-      ANALYZE_ENDPOINT: "https://api.signsafe.xyz/v1/analyze"
+      ANALYZE_ENDPOINT: "https://api.signsafe.xyz/v1/analyze",
+      PING_ENDPOINT: "https://api.signsafe.xyz/v1/ping",
+      FALLBACK_ANALYZE_ENDPOINT: "https://signsafe-api.utkuvonarslan.workers.dev/v1/analyze",
+      FALLBACK_PING_ENDPOINT: "https://signsafe-api.utkuvonarslan.workers.dev/v1/ping"
     }),
     MESSAGE_TYPES: Object.freeze({
       PAGE: Object.freeze({

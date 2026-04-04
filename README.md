@@ -10,14 +10,13 @@ SignSafe is a Chrome extension that intercepts Solana wallet signing requests, s
 - `src/overlay/` contains the overlay runtime script used by `overlay.html`.
 - `src/demo/` and `src/options/` contain the extension page scripts.
 - `shared/` contains cross-surface constants, fixtures, parsing, formatting, and helper logic.
-- `test-dapp/` contains the localhost devnet harness.
 - Root HTML/CSS files remain extension entry documents referenced directly by Chrome.
 
 ## Load Unpacked
 
 1. Open `chrome://extensions`.
 2. Enable Developer Mode.
-3. Click **Load unpacked** and select this repository root.
+3. Click **Load unpacked** and select the `extension/` folder.
 4. Open the SignSafe extension details and set an OpenAI API key through **Extension options**.
 5. Open a Solana dApp and trigger a wallet signature request.
 
@@ -34,10 +33,11 @@ The demo page renders the same overlay used during live interception, but with b
 
 ## Local Test DApp
 
-For a deterministic localhost harness, serve [index.html](/home/r00t/code/signsafe/test-dapp/index.html) from the `test-dapp/` folder:
+If you are using the multi-repo workspace (`SignSafe-Meta`), the local harness lives at `demo/test-dapp`.
+Serve it from the meta root:
 
 ```bash
-python3 -m http.server 8788 --directory test-dapp
+python3 -m http.server 8788 --directory demo/test-dapp
 ```
 
 Then open `http://127.0.0.1:8788` and use the core buttons in order:

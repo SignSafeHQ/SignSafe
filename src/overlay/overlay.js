@@ -6,31 +6,27 @@
   const DEBUG_STORAGE_KEY = CONSTANTS.DEBUG_STORAGE_KEY || "signsafe-debug";
   const DEBUG = isDebugEnabled();
 
-  const normalizeFacts = HELPERS.normalizeFacts || ((verdict) => verdict?.facts || {});
-  const normalizeArray = HELPERS.normalizeArray || ((value) => (Array.isArray(value) ? value : []));
-  const SAFE_RISKS = ["safe", "review", "danger"];
-  const normalizeRisk = HELPERS.normalizeRisk || ((value) => (SAFE_RISKS.includes(value) ? value : "review"));
-  const formatSolChanges = HELPERS.formatSolChanges || ((items) => String(items || ""));
-  const formatTokenChanges = HELPERS.formatTokenChanges || ((items) => String(items || ""));
-  const formatPrograms = HELPERS.formatPrograms || ((items) => String(items || ""));
-  const formatMessagePreview = HELPERS.formatMessagePreview || ((value) => String(value || ""));
+  const normalizeFacts = HELPERS.normalizeFacts || ((v) => v?.facts || {});
+  const normalizeArray = HELPERS.normalizeArray || ((v) => (Array.isArray(v) ? v : []));
+  const normalizeRisk = HELPERS.normalizeRisk || ((v) => (["safe", "review", "danger"].includes(v) ? v : "review"));
   const summarizeBatchFacts = HELPERS.summarizeBatchFacts || (() => ({}));
   const phaseLabel = HELPERS.phaseLabel || (() => "Preparing");
-  const shortMethodLabel = HELPERS.shortMethodLabel || ((value) => value || "");
+  const shortMethodLabel = HELPERS.shortMethodLabel || ((v) => v || "");
 
   let currentSessionId = null;
-  let stepTimerId = null;
+  let currentRisk = null;
+  let currentOrigin = null;
+  let startTime = null;
   let parentOrigin = null;
+  let advOpen = false;
+
+  // ─── Message handling ─────────────────────────────────────────────────────
 
   window.addEventListener("message", (event) => {
     const message = event.data;
-    if (!message || message.channel !== CHANNEL) {
-      return;
-    }
+    if (!message || message.channel !== CHANNEL) return;
 
-    if (!parentOrigin && event.origin) {
-      parentOrigin = event.origin;
-    }
+    if (!parentOrigin && event.origin) parentOrigin = event.origin;
 
     debugLog("received", message.type, message.sessionId);
     currentSessionId = message.sessionId;
@@ -51,13 +47,410 @@
     }
   });
 
+  // ─── Button wiring ────────────────────────────────────────────────────────
+
   document.getElementById("btn-block").addEventListener("click", () => {
     emitDecision(false, currentSessionId);
   });
 
   document.getElementById("btn-proceed").addEventListener("click", () => {
+    if (currentRisk === "review" || currentRisk === "danger") {
+      showConfirmOverlay();
+    } else {
+      emitDecision(true, currentSessionId);
+    }
+  });
+
+  document.getElementById("btn-confirm-back").addEventListener("click", hideConfirmOverlay);
+
+  document.getElementById("btn-confirm-proceed").addEventListener("click", () => {
+    hideConfirmOverlay();
     emitDecision(true, currentSessionId);
   });
+
+  document.getElementById("adv-toggle").addEventListener("click", toggleAdvContent);
+
+  document.getElementById("danger-check").addEventListener("change", (e) => {
+    const btn = document.getElementById("btn-sign-anyway");
+    btn.classList.toggle("enabled", e.target.checked);
+    btn.disabled = !e.target.checked;
+  });
+
+  document.getElementById("btn-sign-anyway").addEventListener("click", () => {
+    emitDecision(true, currentSessionId);
+  });
+
+  // ─── Render functions ─────────────────────────────────────────────────────
+
+  function renderLoading(payload) {
+    startTime = Date.now();
+    currentRisk = null;
+    currentOrigin = payload.origin || null;
+
+    setRiskState("scan");
+    hideElement("risk-headline");
+    showElement("rh-loading");
+    hideElement("verdict-callout");
+    hideElement("adv-toggle");
+    hideElement("adv-content");
+    hideElement("wallet-chip");
+    hideElement("batch-area");
+    showActionListSkeletons();
+
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = "";
+
+    setText("kicker-text", "Analyzing transaction");
+    setText("sec-label-text", "Simulating on-chain");
+    setText("site-chip-text", currentOrigin || "analyzing…");
+    setText("intercept-text", buildInterceptText("scan", currentOrigin, payload.phase));
+    setText("time-text", "analyzing…");
+
+    setButtonState({ loading: true });
+  }
+
+  function renderVerdict(verdict, meta) {
+    const risk = normalizeRisk(verdict.risk);
+    currentRisk = risk;
+
+    const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) + " s" : "";
+    const facts = normalizeFacts(verdict);
+    const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
+
+    setRiskState(risk);
+    hideElement("rh-loading");
+    showElement("risk-headline");
+    hideElement("batch-area");
+
+    // Backdrop tint
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = risk === "safe" ? "" : risk;
+
+    // Panel shake on danger
+    if (risk === "danger") {
+      const panel = document.getElementById("panel");
+      panel.classList.remove("shake");
+      void panel.offsetWidth;
+      panel.classList.add("shake");
+      setTimeout(() => panel.classList.remove("shake"), 400);
+    }
+
+    // Risk kicker text
+    const kickers = { safe: "No risk detected", review: "Review recommended", danger: "Threat detected" };
+    setText("kicker-text", kickers[risk] || "Analysis complete");
+
+    // Headline (DM Serif Display)
+    setText("risk-headline", verdict.summary || "Unable to analyze this transaction clearly.");
+
+    // Intercept bar
+    setText("intercept-text", buildInterceptText(risk, currentOrigin, method));
+
+    // Site chip
+    setText("site-chip-text", currentOrigin || "—");
+
+    // Progress label for multi-tx
+    const methodShort = shortMethodLabel(method);
+    const progressText = meta && meta.total > 1 ? `${methodShort} ${meta.current} of ${meta.total}` : methodShort;
+    if (progressText && progressText !== "Transaction") {
+      setText("sec-label-text", progressText);
+    } else {
+      setText("sec-label-text", risk === "danger" ? "Risk flags detected" : "Transaction breakdown");
+    }
+
+    // Action rows
+    renderActionRows(verdict, facts, risk);
+
+    // Verdict callout
+    const calloutText = verdict.verdict || "";
+    if (calloutText) {
+      setText("verdict-callout", calloutText);
+      showElement("verdict-callout");
+    } else {
+      hideElement("verdict-callout");
+    }
+
+    // Advanced options (danger only)
+    if (risk === "danger") {
+      showElement("adv-toggle");
+      advOpen = false;
+      document.getElementById("adv-toggle").classList.remove("open");
+      document.getElementById("adv-toggle").setAttribute("aria-expanded", "false");
+      hideElement("adv-content");
+      document.getElementById("adv-content").classList.remove("show");
+      document.getElementById("danger-check").checked = false;
+      const signAnyway = document.getElementById("btn-sign-anyway");
+      signAnyway.classList.remove("enabled");
+      signAnyway.disabled = true;
+    } else {
+      hideElement("adv-toggle");
+      hideElement("adv-content");
+    }
+
+    // Footer
+    setText("time-text", elapsed || "—");
+    if (risk !== "danger") {
+      showElement("wallet-chip");
+      setText("wallet-chip-text", risk === "safe" ? "→ wallet opens after" : "→ wallet opens if you proceed");
+    } else {
+      hideElement("wallet-chip");
+    }
+
+    // Debug
+    setText("debug-meta", [
+      `Method: ${method}`,
+      `Sim: ${facts.simulation_status || "unknown"}`,
+      `Codes: ${normalizeArray(verdict.reason_codes).join(", ") || "none"}`
+    ].join(" · "));
+    setText("debug-json", JSON.stringify({ verdict, facts, meta }, null, 2));
+    document.getElementById("debug-details").open = false;
+
+    setButtonState({ loading: false, risk });
+  }
+
+  function renderBatch(verdicts) {
+    currentRisk = "safe";
+
+    setRiskState("safe");
+    hideElement("rh-loading");
+    hideElement("risk-headline");
+    hideElement("verdict-callout");
+    hideElement("adv-toggle");
+    hideElement("adv-content");
+    showElement("wallet-chip");
+    setText("wallet-chip-text", "→ wallet opens after");
+
+    const tint = document.getElementById("backdrop-tint");
+    if (tint) tint.className = "";
+
+    const unsafeCount = verdicts.filter((v) => normalizeRisk(v.risk) !== "safe").length;
+
+    setText("kicker-text", "Batch analysis complete");
+    setText("risk-headline", "");
+
+    // Populate batch area instead of action list
+    showElement("batch-area");
+    document.getElementById("batch-area").classList.add("show");
+    document.getElementById("action-list").innerHTML = "";
+
+    setText("batch-summary",
+      unsafeCount === 0
+        ? `${verdicts.length} transactions look safe overall.`
+        : `${unsafeCount} of ${verdicts.length} transactions need review.`
+    );
+    setText("batch-detail",
+      unsafeCount === 0
+        ? "SignSafe did not detect suspicious effects in this batch."
+        : "One or more items in this batch need attention."
+    );
+
+    const actionItems = verdicts.flatMap((v) => normalizeArray(v.actions)).slice(0, 6);
+    const batchList = document.getElementById("batch-actions");
+    batchList.innerHTML = "";
+    for (const text of actionItems) {
+      const li = document.createElement("li");
+      li.textContent = text;
+      batchList.appendChild(li);
+    }
+
+    setText("time-text", "");
+    setText("sec-label-text", "Batch summary");
+    setText("intercept-text", buildInterceptText("safe", currentOrigin, "batch"));
+
+    setText("debug-json", JSON.stringify({ verdicts }, null, 2));
+    document.getElementById("debug-details").open = false;
+
+    setButtonState({ loading: false, risk: unsafeCount === 0 ? "safe" : "review" });
+  }
+
+  // ─── Action row rendering ─────────────────────────────────────────────────
+
+  function renderActionRows(verdict, facts, risk) {
+    const list = document.getElementById("action-list");
+    list.innerHTML = "";
+
+    // Choose which items to show based on risk
+    const riskReasons = normalizeArray(verdict.risk_reasons);
+    const actions = normalizeArray(verdict.actions);
+
+    let rows = [];
+
+    if (risk === "danger") {
+      // Show risk reasons with danger icons first
+      rows = riskReasons.slice(0, 3).map((text) => ({ text, icon: "ico-d", svgType: "x" }));
+      // Then actions with neutral icons
+      const remaining = 4 - rows.length;
+      rows.push(...actions.slice(0, remaining).map((text) => ({ text, icon: "ico-n", svgType: "arrow" })));
+    } else if (risk === "review") {
+      // Show risk reasons with warn icons
+      rows = riskReasons.slice(0, 2).map((text) => ({ text, icon: "ico-w", svgType: "warn" }));
+      // Then actions
+      const remaining = 4 - rows.length;
+      rows.push(...actions.slice(0, remaining).map((text) => ({ text, icon: "ico-n", svgType: "arrow" })));
+    } else {
+      // safe — show actions with safe icons
+      rows = actions.slice(0, 4).map((text) => ({ text, icon: "ico-s", svgType: "check" }));
+    }
+
+    // If we have sol/token data, prepend a summary row
+    const solSummary = buildSolSummary(facts.sol_changes || []);
+    if (solSummary && rows.length < 4) {
+      rows.unshift({ text: solSummary, icon: risk === "safe" ? "ico-s" : "ico-w", svgType: risk === "safe" ? "check" : "warn" });
+      rows = rows.slice(0, 4);
+    }
+
+    if (rows.length === 0) {
+      rows = [{ text: "No detailed breakdown is available for this transaction.", icon: "ico-n", svgType: "arrow" }];
+    }
+
+    for (const row of rows) {
+      list.appendChild(buildActionRow(row.text, row.icon, row.svgType));
+    }
+  }
+
+  function buildActionRow(text, iconClass, svgType) {
+    const row = document.createElement("div");
+    row.className = "a-row";
+
+    const iconEl = document.createElement("div");
+    iconEl.className = `a-icon ${iconClass}`;
+    iconEl.innerHTML = iconSvg(svgType);
+
+    const body = document.createElement("div");
+    body.className = "a-body";
+    body.textContent = text;
+
+    row.appendChild(iconEl);
+    row.appendChild(body);
+    return row;
+  }
+
+  function iconSvg(type) {
+    const icons = {
+      check: `<svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 5.5l2.5 2.5 4.5-4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+      warn:  `<svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 2v4M5.5 8v.5" stroke-linecap="round"/></svg>`,
+      x:     `<svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 2l7 7M9 2L2 9" stroke-linecap="round"/></svg>`,
+      arrow: `<svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2 5.5h7M6 3l3 2.5L6 8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+    };
+    return icons[type] || icons.arrow;
+  }
+
+  function buildSolSummary(solChanges) {
+    if (!solChanges || solChanges.length === 0) return "";
+    let out = 0;
+    let inbound = 0;
+    for (const item of solChanges) {
+      const delta = Number(item.deltaSol ?? item.changeSOL ?? 0);
+      if (delta < 0) out += Math.abs(delta);
+      if (delta > 0) inbound += delta;
+    }
+    const parts = [];
+    if (out > 0) parts.push(`Send ${trimAmount(out)} SOL`);
+    if (inbound > 0) parts.push(`Receive ${trimAmount(inbound)} SOL`);
+    return parts.join(" · ");
+  }
+
+  function showActionListSkeletons() {
+    const list = document.getElementById("action-list");
+    list.innerHTML = `
+      <div class="a-row skel-row">
+        <div class="a-icon ico-n"><svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="4"/><path d="M5.5 2v3.5l2 2" stroke-linecap="round"/></svg></div>
+        <div class="a-body"><div class="skel skel-body"></div></div>
+      </div>
+      <div class="a-row skel-row">
+        <div class="a-icon ico-n"><svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="5.5" cy="5.5" r="4"/><path d="M5.5 2v3.5l2 2" stroke-linecap="round"/></svg></div>
+        <div class="a-body"><div class="skel skel-body-short"></div></div>
+      </div>
+    `;
+  }
+
+  // ─── Intercept bar text ───────────────────────────────────────────────────
+
+  function buildInterceptText(risk, origin, method) {
+    const from = origin ? ` from <strong>${escapeHtml(origin)}</strong>` : "";
+    if (risk === "scan") {
+      return `SignSafe intercepted a transaction${from} — analyzing before your wallet opens…`;
+    }
+    if (risk === "safe") {
+      return `Transaction${from} intercepted & analyzed. <strong>No issues found.</strong>`;
+    }
+    if (risk === "review") {
+      return `Transaction${from} intercepted. <strong>Review before proceeding.</strong>`;
+    }
+    if (risk === "danger") {
+      return `Transaction${from} intercepted. <strong>High risk detected — do not sign.</strong>`;
+    }
+    return `Transaction${from} intercepted.`;
+  }
+
+  // ─── State helpers ────────────────────────────────────────────────────────
+
+  function setRiskState(risk) {
+    const panel = document.getElementById("panel");
+    panel.classList.remove("state-scan", "state-safe", "state-review", "state-danger");
+    panel.classList.add(`state-${risk}`);
+  }
+
+  function setButtonState({ loading, risk }) {
+    const proceed = document.getElementById("btn-proceed");
+    const block = document.getElementById("btn-block");
+    const buttons = document.getElementById("buttons");
+
+    if (loading) {
+      proceed.disabled = true;
+      proceed.className = "";
+      proceed.textContent = "Analyzing…";
+      block.disabled = false;
+      block.className = "";
+      block.textContent = "Cancel";
+      if (buttons) buttons.removeAttribute("data-risk");
+      return;
+    }
+
+    const r = normalizeRisk(risk);
+
+    block.disabled = false;
+    proceed.disabled = false;
+
+    if (r === "danger") {
+      block.className = "danger-primary";
+      block.textContent = "Block this transaction";
+      proceed.className = "danger";
+      proceed.textContent = "Proceed anyway";
+      if (buttons) buttons.setAttribute("data-risk", "danger");
+    } else {
+      block.className = "";
+      block.textContent = "Block";
+      proceed.className = r;
+      proceed.textContent = "Proceed";
+      if (buttons) buttons.removeAttribute("data-risk");
+    }
+  }
+
+  // ─── Confirm overlay ──────────────────────────────────────────────────────
+
+  function showConfirmOverlay() {
+    const overlay = document.getElementById("confirm-overlay");
+    overlay.classList.remove("hidden");
+    document.getElementById("btn-confirm-back").focus();
+  }
+
+  function hideConfirmOverlay() {
+    document.getElementById("confirm-overlay").classList.add("hidden");
+  }
+
+  // ─── Advanced toggle (danger) ─────────────────────────────────────────────
+
+  function toggleAdvContent() {
+    advOpen = !advOpen;
+    const content = document.getElementById("adv-content");
+    const btn = document.getElementById("adv-toggle");
+    content.classList.toggle("show", advOpen);
+    content.classList.toggle("hidden", !advOpen);
+    btn.classList.toggle("open", advOpen);
+    btn.setAttribute("aria-expanded", String(advOpen));
+  }
+
+  // ─── Decision emit ────────────────────────────────────────────────────────
 
   function emitDecision(approved, sessionId) {
     debugLog("decision", approved, sessionId);
@@ -72,453 +465,52 @@
     );
   }
 
-  function renderLoading(payload) {
-    revealPanel();
-    activateState("loading-state");
-    setText("loading-phase", phaseLabel(payload.phase));
-    setText("loading-title", payload.title || "Analyzing transaction");
-    setButtonState({ loading: true });
-
-    const tint = document.getElementById("backdrop-tint");
-    if (tint) tint.className = "";
-
-    const stepSimulate = document.getElementById("step-simulate");
-    const stepAI = document.getElementById("step-ai");
-    if (stepSimulate) stepSimulate.classList.add("active");
-    if (stepAI) stepAI.classList.remove("active");
-    clearTimeout(stepTimerId);
-    stepTimerId = setTimeout(() => {
-      if (stepAI) stepAI.classList.add("active");
-    }, 1500);
-  }
-
-  function renderVerdict(verdict, meta) {
-    revealPanel();
-    activateState("verdict-state");
-    clearTimeout(stepTimerId);
-
-    const risk = normalizeRisk(verdict.risk);
-
-    // Backdrop tint
-    const tint = document.getElementById("backdrop-tint");
-    if (tint) tint.className = risk === "safe" ? "" : risk;
-
-    const facts = normalizeFacts(verdict);
-    const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
-    const reasonCodes = normalizeArray(verdict.reason_codes);
-
-    // Risk stamp (merged icon + label)
-    const stampEl = document.getElementById("risk-stamp");
-    if (stampEl) {
-      stampEl.className = risk;
-      stampEl.innerHTML = riskStampInner(risk);
-    }
-
-    const methodShort = shortMethodLabel(method);
-    setText("method-badge", methodShort && methodShort !== "Transaction" ? methodShort : "");
-    setText("progress-label", meta && meta.total > 1 ? `Transaction ${meta.current} of ${meta.total}` : "");
-    setText("summary", verdict.summary || "Unable to analyze this transaction clearly.");
-
-    // Verdict callout with risk-colored left border
-    const verdictTextEl = document.getElementById("verdict-text");
-    if (verdictTextEl) {
-      verdictTextEl.textContent = verdict.verdict || "Proceed only if you fully understand the transaction.";
-      verdictTextEl.className = `verdict-callout ${risk}`;
-    }
-
-    renderFindings(verdict, facts, risk);
-    renderImpactGrid("impact-grid", buildImpactItems(facts, risk, verdict));
-    renderFacts("facts-grid", facts);
-    fillList("actions-list", normalizeArray(verdict.actions), "No visible actions were extracted.");
-
-    const riskReasons = normalizeArray(verdict.risk_reasons);
-    const risksSection = document.getElementById("risks-section");
-    if (riskReasons.length > 0) {
-      setVisibility(risksSection, true);
-      fillList("risks-list", riskReasons, "");
-    } else {
-      setVisibility(risksSection, false);
-      fillList("risks-list", [], "");
-    }
-
-    setText(
-      "debug-meta",
-      [
-        `Method: ${method}`,
-        `Simulation: ${facts.simulation_status || verdict.simulation_status || "unknown"}`,
-        `Risk codes: ${reasonCodes.length > 0 ? reasonCodes.join(", ") : "none"}`
-      ].join(" | ")
-    );
-    setText("debug-json", JSON.stringify({ verdict, facts, meta }, null, 2));
-    document.getElementById("debug-details").open = false;
-
-    setButtonState({ loading: false, risk });
-  }
-
-  function renderBatch(verdicts) {
-    revealPanel();
-    activateState("batch-state");
-    clearTimeout(stepTimerId);
-
-    const tint = document.getElementById("backdrop-tint");
-    if (tint) tint.className = "";
-
-    const combinedFacts = summarizeBatchFacts(verdicts);
-    const actionItems = verdicts
-      .flatMap((verdict) => normalizeArray(verdict.actions))
-      .slice(0, 8);
-    const unsafeCount = verdicts.filter((verdict) => normalizeRisk(verdict.risk) !== "safe").length;
-
-    setText(
-      "batch-summary",
-      unsafeCount === 0
-        ? `${verdicts.length} transactions look safe overall.`
-        : `${unsafeCount} of ${verdicts.length} transactions need review.`
-    );
-    setText(
-      "batch-detail",
-      unsafeCount === 0
-        ? "SignSafe did not detect suspicious effects in this batch."
-        : "One or more items in this batch need attention."
-    );
-    renderImpactGrid("batch-impact-grid", buildBatchImpactItems(verdicts, combinedFacts, unsafeCount));
-    renderFacts("batch-facts-grid", combinedFacts);
-    fillList("batch-actions", actionItems, "No suspicious effects were detected during simulation.");
-    setText(
-      "batch-debug-meta",
-      `Source: batch | Risk codes: ${Array.from(new Set(verdicts.flatMap((verdict) => normalizeArray(verdict.reason_codes)))).join(", ") || "none"}`
-    );
-    setText("batch-debug-json", JSON.stringify({ verdicts, combinedFacts }, null, 2));
-    document.getElementById("batch-debug-details").open = false;
-
-    setButtonState({ loading: false, risk: unsafeCount === 0 ? "safe" : "review" });
-  }
-
-  function renderFacts(containerId, facts) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = "";
-
-    const entries = [];
-    if (facts.intercepted_method) entries.push(["Method", facts.intercepted_method]);
-    if (facts.simulation_status) entries.push(["Simulation", facts.simulation_status]);
-    if (facts.source) entries.push(["Source", facts.source]);
-    if (facts.reason_codes && facts.reason_codes.length > 0) entries.push(["Reason codes", facts.reason_codes.join(", ")]);
-    if (facts.sol_changes && facts.sol_changes.length > 0) entries.push(["SOL delta", formatSolChanges(facts.sol_changes)]);
-    if (facts.token_changes && facts.token_changes.length > 0) entries.push(["Token delta", formatTokenChanges(facts.token_changes)]);
-    if (facts.programs && facts.programs.length > 0) entries.push(["Programs", formatPrograms(facts.programs)]);
-    if (facts.message_preview) entries.push(["Message preview", formatMessagePreview(facts.message_preview)]);
-
-    const visibleEntries = entries.length > 0 ? entries : [["Facts", "No structured facts were supplied."]];
-    for (const [label, value] of visibleEntries) {
-      const card = document.createElement("div");
-      card.className = `fact-card ${label === "Message preview" || value.length > 120 ? "wide" : ""}`.trim();
-
-      const labelEl = document.createElement("div");
-      labelEl.className = "fact-label";
-      labelEl.textContent = label;
-
-      const valueEl = document.createElement("div");
-      valueEl.className = "fact-value";
-      valueEl.textContent = value;
-
-      if (label === "Message preview") {
-        valueEl.innerHTML = "";
-        const pre = document.createElement("pre");
-        pre.textContent = value;
-        valueEl.appendChild(pre);
-      } else if (typeof value === "string" && value.includes("\n")) {
-        valueEl.innerHTML = "";
-        for (const line of value.split("\n")) {
-          const span = document.createElement("div");
-          span.textContent = line;
-          valueEl.appendChild(span);
-        }
-      }
-
-      card.appendChild(labelEl);
-      card.appendChild(valueEl);
-      container.appendChild(card);
-    }
-  }
-
-  function renderFindings(verdict, facts, risk) {
-    const riskReasons = normalizeArray(verdict.risk_reasons);
-    const actions = normalizeArray(verdict.actions);
-    const findings = [];
-
-    if (risk === "danger") {
-      findings.push(...riskReasons.slice(0, 3));
-    } else {
-      findings.push(...riskReasons.slice(0, 2));
-      findings.push(...actions.slice(0, 1));
-    }
-
-    if (findings.length === 0 && facts.programs?.length > 0) {
-      findings.push(`Touches ${facts.programs.slice(0, 2).join(" and ")}.`);
-    }
-
-    fillList("findings-list", dedupe(findings).slice(0, 3), "No major issues were highlighted.");
-  }
-
-  function renderImpactGrid(containerId, items) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = "";
-
-    for (const item of items) {
-      const card = document.createElement("div");
-      card.className = `impact-card ${item.tone || ""}`.trim();
-
-      const label = document.createElement("div");
-      label.className = "impact-label";
-      label.textContent = item.label;
-
-      const value = document.createElement("div");
-      value.className = "impact-value";
-      value.textContent = item.value;
-
-      if (item.detail) {
-        const detail = document.createElement("div");
-        detail.className = "impact-detail";
-        detail.textContent = item.detail;
-        card.append(label, value, detail);
-      } else {
-        card.append(label, value);
-      }
-
-      container.appendChild(card);
-    }
-  }
-
-  function buildImpactItems(facts, risk, verdict) {
-    const solSummary = summarizeSol(facts.sol_changes || []);
-    const tokenSummary = summarizeTokens(facts.token_changes || []);
-    const programs = Array.isArray(facts.programs) ? facts.programs : [];
-    const items = [];
-
-    items.push({
-      label: "Verdict",
-      value: risk === "safe" ? "Looks clear" : risk === "danger" ? "High risk" : "Needs review",
-      detail: risk === "safe" ? "No major anomalies detected" : risk === "danger" ? "Block unless you expected this" : "Read the reasons before signing",
-      tone: risk
-    });
-
-    items.push({
-      label: "You send",
-      value: solSummary.out || tokenSummary.out || "No clear outflow",
-      tone: solSummary.out || tokenSummary.out ? "danger" : ""
-    });
-
-    items.push({
-      label: "You receive",
-      value: tokenSummary.in || solSummary.in || "No clear inflow",
-      tone: tokenSummary.in || solSummary.in ? "safe" : ""
-    });
-
-    items.push({
-      label: "Programs",
-      value: programs.length > 0 ? programs.slice(0, 2).join(", ") : "Not identified",
-      detail: programs.length > 2 ? `+${programs.length - 2} more` : "",
-      tone: programs.length > 0 ? "" : "review"
-    });
-
-    if ((facts.message_preview || "").trim()) {
-      items[1] = {
-        label: "Request",
-        value: "Message signature",
-        detail: "No on-chain simulation is available",
-        tone: "review"
-      };
-      items[2] = {
-        label: "Message",
-        value: truncateSingleLine(facts.message_preview, 56),
-        tone: ""
-      };
-    }
-
-    if (verdict.simulation_status === "failed") {
-      items[3] = {
-        label: "Simulation",
-        value: "Failed",
-        detail: "Effects could not be verified",
-        tone: "danger"
-      };
-    }
-
-    return items.slice(0, 4);
-  }
-
-  function buildBatchImpactItems(verdicts, combinedFacts, unsafeCount) {
-    const solSummary = summarizeSol(combinedFacts.sol_changes || []);
-    const tokenSummary = summarizeTokens(combinedFacts.token_changes || []);
-
-    return [
-      {
-        label: "Batch",
-        value: `${verdicts.length} requests`,
-        detail: unsafeCount === 0 ? "All appear safe" : `${unsafeCount} need review`,
-        tone: unsafeCount === 0 ? "safe" : "review"
-      },
-      {
-        label: "Likely outflow",
-        value: solSummary.out || tokenSummary.out || "No clear outflow",
-        tone: solSummary.out || tokenSummary.out ? "danger" : ""
-      },
-      {
-        label: "Likely inflow",
-        value: tokenSummary.in || solSummary.in || "No clear inflow",
-        tone: tokenSummary.in || solSummary.in ? "safe" : ""
-      },
-      {
-        label: "Programs",
-        value: Array.isArray(combinedFacts.programs) && combinedFacts.programs.length > 0
-          ? combinedFacts.programs.slice(0, 2).map(formatProgramLabel).join(", ")
-          : "Mixed",
-        tone: ""
-      }
-    ];
-  }
-
-  function summarizeSol(items) {
-    let out = 0;
-    let inbound = 0;
-    for (const item of items || []) {
-      const delta = Number(item.deltaSol ?? item.changeSOL ?? 0);
-      if (delta < 0) out += Math.abs(delta);
-      if (delta > 0) inbound += delta;
-    }
-
-    return {
-      out: out > 0 ? `${trimAmount(out)} SOL` : "",
-      in: inbound > 0 ? `${trimAmount(inbound)} SOL` : ""
-    };
-  }
-
-  function summarizeTokens(items) {
-    const out = [];
-    const inbound = [];
-    for (const item of items || []) {
-      const delta = Number(item.delta ?? item.change ?? 0);
-      if (!delta) continue;
-      const text = `${trimAmount(Math.abs(delta))} ${formatTokenLabel(item.mint)}`.trim();
-      if (delta < 0) out.push(text);
-      if (delta > 0) inbound.push(text);
-    }
-
-    return {
-      out: out.slice(0, 2).join(", "),
-      in: inbound.slice(0, 2).join(", ")
-    };
-  }
-
-  function formatTokenLabel(mint) {
-    const text = String(mint || "");
-    return text.length > 12 ? `${text.slice(0, 4)}...${text.slice(-4)}` : text || "token";
-  }
-
-  function formatProgramLabel(program) {
-    if (typeof program === "string") return program;
-    return program?.label || program?.programId || "Program";
-  }
-
-  function trimAmount(value) {
-    const number = Number(value || 0);
-    return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/\.?0+$/, "");
-  }
-
-  function truncateSingleLine(value, max) {
-    const text = String(value || "").replace(/\s+/g, " ").trim();
-    return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-  }
-
-  function dedupe(items) {
-    return Array.from(new Set(items.filter(Boolean)));
-  }
-
-  function fillList(id, items, fallback) {
-    const list = document.getElementById(id);
-    list.innerHTML = "";
-
-    const values = Array.isArray(items) && items.length > 0 ? items : fallback ? [fallback] : [];
-    for (const value of values) {
-      const item = document.createElement("li");
-      item.textContent = value;
-      list.appendChild(item);
-    }
-  }
-
-  function riskStampInner(risk) {
-    const icons = {
-      safe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,12 9,17 20,6"/></svg>`,
-      review: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>`,
-      danger: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`
-    };
-    const labels = { safe: "Safe", review: "Review", danger: "Danger" };
-    return `${icons[risk] || icons.review}<span>${labels[risk] || "Review"}</span>`;
-  }
-
-  function setText(id, value) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = value || "";
-  }
-
-  function setButtonState({ loading, risk }) {
-    const proceed = document.getElementById("btn-proceed");
-    const block = document.getElementById("btn-block");
-    const buttons = document.getElementById("buttons");
-
-    if (loading) {
-      proceed.disabled = true;
-      proceed.className = "";
-      block.disabled = false;
-      block.className = "";
-      block.textContent = "Cancel";
-      if (buttons) buttons.removeAttribute("data-risk");
-      return;
-    }
-
-    const r = normalizeRisk(risk);
-
-    block.disabled = false;
-    proceed.disabled = false;
-
-    if (r === "danger") {
-      // Danger: Block is primary, Proceed is demoted
-      block.className = "danger-primary";
-      block.textContent = "Block";
-      proceed.className = "danger";
-      proceed.textContent = "Proceed anyway";
-      if (buttons) buttons.setAttribute("data-risk", "danger");
-    } else {
-      block.className = "";
-      block.textContent = "Block";
-      proceed.className = r;
-      proceed.textContent = "Proceed";
-      if (buttons) buttons.removeAttribute("data-risk");
-    }
-  }
-
-  function activateState(activeId) {
-    for (const state of document.querySelectorAll(".state")) {
-      setVisibility(state, state.id === activeId);
-    }
-  }
-
-  function setVisibility(element, visible) {
-    if (!element) return;
-    element.hidden = !visible;
-    element.classList.toggle("hidden", !visible);
-    element.setAttribute("aria-hidden", visible ? "false" : "true");
-  }
+  // ─── Panel reveal ─────────────────────────────────────────────────────────
 
   function revealPanel() {
     const panel = document.getElementById("panel");
     if (!panel) return;
-    requestAnimationFrame(() => {
-      panel.classList.add("visible");
-    });
+    requestAnimationFrame(() => panel.classList.add("visible"));
   }
+
+  // ─── DOM helpers ──────────────────────────────────────────────────────────
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (id === "intercept-text") {
+      el.innerHTML = value || "";
+    } else {
+      el.textContent = value || "";
+    }
+  }
+
+  function showElement(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove("hidden");
+  }
+
+  function hideElement(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add("hidden");
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function trimAmount(value) {
+    const n = Number(value || 0);
+    return Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/\.?0+$/, "");
+  }
+
+  // ─── Debug ────────────────────────────────────────────────────────────────
 
   function debugLog(...args) {
     if (!DEBUG) return;

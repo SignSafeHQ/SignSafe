@@ -102,7 +102,8 @@
         await session.showLoading({
           phase: "message",
           title: "Reviewing signature request",
-          detail: "Preparing a blind-signature warning before your wallet prompt appears."
+          detail: "Preparing a blind-signature warning before your wallet prompt appears.",
+          origin: window.location.hostname
         });
         debugLog("showing signMessage overlay");
         const approved = await session.showVerdict(
@@ -151,7 +152,8 @@
           message.transactions.length > 1
             ? `Analyzing ${message.transactions.length} transactions`
             : "Analyzing transaction",
-        detail: "Running simulation, deterministic checks, and explanation generation."
+        detail: "Running simulation, deterministic checks, and explanation generation.",
+        origin: window.location.hostname
       });
 
       const verdicts = await Promise.all(
