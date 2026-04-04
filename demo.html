@@ -4,81 +4,235 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SignSafe Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
       :root {
         color-scheme: light;
-        font-family: "Segoe UI", sans-serif;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        --ink: #0f1f35;
+        --muted: #536277;
+        --line: rgba(15, 31, 53, 0.1);
+        --safe-bg: #d6f5e3;
+        --safe-ink: #0a5c35;
+        --safe-mid: #1a9955;
+        --review-bg: #fff0c2;
+        --review-ink: #7a4c00;
+        --review-mid: #c07b00;
+        --danger-bg: #ffe4e3;
+        --danger-ink: #991f1c;
+        --danger-mid: #d63b37;
       }
+
+      * { box-sizing: border-box; }
 
       body {
         margin: 0;
-        padding: 28px;
+        padding: 0;
         background:
-          radial-gradient(circle at top right, rgba(94, 124, 255, 0.16), transparent 24%),
-          linear-gradient(180deg, #f4f7fb, #eef2f9);
-        color: #132033;
+          radial-gradient(circle at top right, rgba(94, 124, 255, 0.14), transparent 30%),
+          linear-gradient(180deg, #edf1f8, #e6ecf5);
+        color: var(--ink);
+        min-height: 100vh;
       }
 
-      h1 {
-        margin-top: 0;
-        margin-bottom: 8px;
+      /* ── Header ── */
+      header {
+        padding: 40px 40px 0;
+        max-width: 900px;
+        margin: 0 auto;
       }
 
-      p {
-        margin-top: 0;
-        max-width: 760px;
-        color: #536173;
-        line-height: 1.6;
+      .wordmark {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
       }
 
+      .wordmark-shield {
+        width: 34px;
+        height: 34px;
+        background: linear-gradient(135deg, #2b6fff, #1a50d4);
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(43, 111, 255, 0.35);
+      }
+
+      .wordmark-shield svg {
+        width: 18px;
+        height: 18px;
+        fill: white;
+      }
+
+      .wordmark-text {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--ink);
+        letter-spacing: -0.02em;
+      }
+
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.15;
+      }
+
+      header p {
+        margin: 0;
+        max-width: 620px;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      /* ── Grid ── */
       #grid {
         display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        margin-top: 24px;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        padding: 28px 40px 0;
+        max-width: 900px;
+        margin: 0 auto;
       }
 
+      /* ── Cards ── */
       .card {
-        padding: 20px;
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.92);
-        border: 1px solid rgba(19, 32, 51, 0.08);
-        box-shadow: 0 12px 34px rgba(19, 32, 51, 0.1);
+        padding: 22px 22px 18px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(15, 31, 53, 0.08);
+        box-shadow: 0 4px 20px rgba(15, 31, 53, 0.09);
+        border-top: 3px solid var(--line);
+        cursor: pointer;
+        transition: transform 160ms ease, box-shadow 160ms ease;
       }
 
+      .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 40px rgba(15, 31, 53, 0.14);
+      }
+
+      .card:active {
+        transform: translateY(-1px);
+      }
+
+      .card.safe  { border-top-color: var(--safe-mid); }
+      .card.review { border-top-color: var(--review-mid); }
+      .card.danger { border-top-color: var(--danger-mid); }
+
+      /* ── Badge ── */
       .badge {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
         margin-bottom: 10px;
-        padding: 6px 10px;
+        padding: 5px 11px;
         border-radius: 999px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        background: #e8eefb;
       }
 
+      .badge.safe   { background: var(--safe-bg);   color: var(--safe-ink); }
+      .badge.review { background: var(--review-bg);  color: var(--review-ink); }
+      .badge.danger { background: var(--danger-bg);  color: var(--danger-ink); }
+
       .card h2 {
-        margin: 0 0 8px;
-        font-size: 20px;
+        margin: 0 0 7px;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
       }
 
       .card p {
-        margin-bottom: 16px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
       }
 
       .card button {
-        min-height: 42px;
-        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 40px;
+        padding: 0 16px;
         border: none;
         border-radius: 12px;
-        background: #215df6;
+        background: #2b6fff;
         color: white;
         font: inherit;
+        font-size: 13px;
         font-weight: 700;
         cursor: pointer;
+        transition: background 140ms ease, box-shadow 140ms ease, transform 100ms ease;
+        box-shadow: 0 2px 10px rgba(43, 111, 255, 0.28);
       }
 
+      .card button:hover {
+        background: #1f5ce8;
+        box-shadow: 0 4px 16px rgba(43, 111, 255, 0.36);
+        transform: translateY(-1px);
+      }
+
+      .card button:active {
+        transform: translateY(0);
+      }
+
+      .card button svg {
+        width: 14px;
+        height: 14px;
+        fill: white;
+        flex-shrink: 0;
+      }
+
+      /* ── Result banner ── */
+      #result-banner {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        max-width: 900px;
+        margin: 20px 40px 0;
+        padding: 14px 20px;
+        border-radius: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        animation: slideDown 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      #result-banner.approved {
+        display: flex;
+        background: var(--safe-bg);
+        color: var(--safe-ink);
+        border: 1px solid rgba(10, 92, 53, 0.20);
+      }
+
+      #result-banner.blocked {
+        display: flex;
+        background: var(--danger-bg);
+        color: var(--danger-ink);
+        border: 1px solid rgba(153, 31, 28, 0.20);
+      }
+
+      #result-banner svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Overlay iframe ── */
       #overlay-frame {
         position: fixed;
         inset: 0;
@@ -90,21 +244,45 @@
         z-index: 99999;
       }
 
-      #status {
-        margin-top: 18px;
-        font-weight: 600;
+      /* ── Footer ── */
+      footer {
+        padding: 32px 40px;
+        max-width: 900px;
+        margin: 0 auto;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 600px) {
+        header, #grid, #result-banner, footer {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        header { padding-top: 28px; }
+        header h1 { font-size: 24px; }
       }
     </style>
   </head>
   <body>
-    <h1>SignSafe Demo Fixtures</h1>
-    <p>
-      Use this page to preview the extension overlay without a live wallet flow. Each fixture matches the
-      hackathon pitch story and uses the same UI that appears before wallet approval.
-    </p>
+    <header>
+      <div class="wordmark">
+        <div class="wordmark-shield">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"/>
+          </svg>
+        </div>
+        <span class="wordmark-text">SignSafe</span>
+      </div>
+      <h1>Know what you're signing<br>before you sign it.</h1>
+      <p>Preview the overlay shown to users before any Solana wallet signing request. Click a scenario to see the live analysis UI.</p>
+    </header>
+
     <div id="grid"></div>
-    <div id="status"></div>
-    <iframe id="overlay-frame" src="overlay.html" title="SignSafe demo overlay"></iframe>
+    <div id="result-banner"></div>
+
+    <footer>AI analysis helps spot risk, but it is not a guarantee. Only sign what you understand.</footer>
+
+    <iframe id="overlay-frame" src="overlay.html" title="SignSafe overlay preview"></iframe>
     <script src="demo_transactions.js"></script>
     <script src="demo.js"></script>
   </body>

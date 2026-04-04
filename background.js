@@ -1,7 +1,9 @@
 const RPC_ENDPOINT = "https://api.devnet.solana.com";
 const OPENAI_API = "https://api.openai.com/v1/responses";
-const OPENAI_MODEL = "gpt-5.4-mini";
-const DEBUG = true;
+const OPENAI_MODEL = "gpt-5.4-nano";
+let DEBUG = true;
+const LARGE_SOL_TRANSFER_THRESHOLD = 1;
+const VERDICT_CACHE_TTL_MS = 60_000;
 
 const KNOWN_PROGRAMS = {
   "11111111111111111111111111111111": "System Program",
@@ -26,7 +28,21 @@ const DEMO_VERDICTS = {
       "Interact with known Jupiter and DEX programs only."
     ],
     risk_reasons: [],
-    verdict: "This looks consistent with a normal swap. Proceed if the amount matches your intent."
+    verdict: "This looks consistent with a normal swap. Proceed if the amount matches your intent.",
+    reason_codes: [],
+    source: "heuristics+model",
+    simulation_status: "succeeded",
+    intercepted_method: "signTransaction",
+    facts: {
+      sol_changes: [{ account: "#0", deltaSol: -1, direction: "out" }],
+      token_changes: [{ mint: "USDC", delta: 1, direction: "in" }],
+      programs: ["Jupiter", "Raydium CLMM"],
+      total_sol_out: 1,
+      total_sol_in: 0,
+      total_token_out: 0,
+      total_token_in: 1,
+      warnings: []
+    }
   },
   DEMO_DRAINER: {
     risk: "danger",
@@ -41,7 +57,24 @@ const DEMO_VERDICTS = {
       "Transaction intent does not match a normal swap or mint flow.",
       "High likelihood of wallet-drain behavior."
     ],
-    verdict: "Do not sign this transaction unless you independently trust every destination address."
+    verdict: "Do not sign this transaction unless you independently trust every destination address.",
+    reason_codes: ["token_drain_pattern", "multi_transfer_batch", "unknown_program"],
+    source: "heuristics+model",
+    simulation_status: "succeeded",
+    intercepted_method: "signTransaction",
+    facts: {
+      sol_changes: [{ account: "#0", deltaSol: -0.5, direction: "out" }],
+      token_changes: [
+        { mint: "USDC", delta: -120.5, direction: "out" },
+        { mint: "BONK", delta: -25000, direction: "out" }
+      ],
+      programs: ["Unknown Program"],
+      total_sol_out: 0.5,
+      total_sol_in: 0,
+      total_token_out: 25120.5,
+      total_token_in: 0,
+      warnings: ["Multiple assets leave the wallet in one request."]
+    }
   },
   DEMO_NFT_MINT: {
     risk: "review",
@@ -55,7 +88,21 @@ const DEMO_VERDICTS = {
       "Mint flows create new accounts and may include several setup instructions.",
       "Review the mint cost and collection details before signing."
     ],
-    verdict: "This may be legitimate, but review the cost and expected collection before proceeding."
+    verdict: "This may be legitimate, but review the cost and expected collection before proceeding.",
+    reason_codes: ["unknown_program", "multi_transfer_batch"],
+    source: "heuristics+model",
+    simulation_status: "succeeded",
+    intercepted_method: "signTransaction",
+    facts: {
+      sol_changes: [{ account: "#0", deltaSol: -0.03, direction: "out" }],
+      token_changes: [{ mint: "NFT mint", delta: 1, direction: "in" }],
+      programs: ["Metaplex"],
+      total_sol_out: 0.03,
+      total_sol_in: 0,
+      total_token_out: 0,
+      total_token_in: 1,
+      warnings: ["NFT mint flows often create new accounts and rent charges."]
+    }
   }
 };
 
@@ -63,6 +110,12 @@ const verdictCache = new Map();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object") {
+    return false;
+  }
+
+  if (message.type === "SET_DEBUG") {
+    DEBUG = Boolean(message.enabled);
+    sendResponse({ ok: true });
     return false;
   }
 
@@ -76,7 +129,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "RUN_DEMO_ANALYSIS") {
-    sendResponse(DEMO_VERDICTS[message.demoId] || buildReviewVerdict("Unknown demo fixture.", [], []));
+    sendResponse(DEMO_VERDICTS[message.demoId] || buildReviewVerdict("Unknown demo fixture.", {}, ["unknown_fixture"]));
     return false;
   }
 
@@ -86,14 +139,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function analyzeTransaction(base64Tx, context) {
   if (!base64Tx || typeof base64Tx !== "string" || base64Tx.trim() === "") {
     debugLog("empty or invalid transaction payload", context?.method);
-    return buildReviewVerdict("Could not analyze this transaction because it could not be serialized.", [], [
-      "The dApp did not provide a valid transaction payload."
-    ]);
+    return buildReviewVerdict(
+      "Could not analyze this transaction because it could not be serialized.",
+      buildFallbackFacts(context),
+      ["serialization_failed"]
+    );
   }
 
-  if (verdictCache.has(base64Tx)) {
+  const cached = getCachedVerdict(base64Tx);
+  if (cached) {
     debugLog("cache hit", context?.method);
-    return verdictCache.get(base64Tx);
+    return cached;
   }
 
   try {
@@ -101,17 +157,25 @@ async function analyzeTransaction(base64Tx, context) {
     const simulation = await simulateTransaction(base64Tx);
     debugLog("simulate complete", context?.method);
     const parsed = parseSimulation(simulation, context);
-    debugLog("openai start", context?.method);
-    const verdict = await askOpenAI(parsed);
-    debugLog("openai complete", context?.method, verdict?.risk);
-    verdictCache.set(base64Tx, verdict);
+    const heuristics = evaluateRisk(parsed);
+
+    let verdict = heuristics.baseVerdict;
+    if (shouldAskModel(heuristics)) {
+      debugLog("openai start", context?.method);
+      const modelVerdict = await askOpenAI(parsed, heuristics);
+      verdict = mergeVerdicts(heuristics, modelVerdict);
+      debugLog("openai complete", context?.method, verdict?.risk);
+    }
+
+    setCachedVerdict(base64Tx, verdict);
     return verdict;
   } catch (error) {
     debugLog("analysis failed", context?.method, error.message);
     return buildReviewVerdict(
       "Could not fully analyze this transaction. Proceed with caution.",
-      [],
-      [`Analysis error: ${error.message}`]
+      buildFallbackFacts(context),
+      ["analysis_error"],
+      { riskReasons: [`Analysis error: ${error.message}`], interceptedMethod: context?.method || "signTransaction" }
     );
   }
 }
@@ -161,7 +225,8 @@ function parseSimulation(simulation, context) {
       return {
         accountIndex: index,
         deltaLamports,
-        deltaSol: Number((deltaLamports / 1e9).toFixed(9))
+        deltaSol: Number((deltaLamports / 1e9).toFixed(9)),
+        direction: deltaLamports > 0 ? "in" : "out"
       };
     })
     .filter((entry) => entry.deltaLamports !== 0);
@@ -196,7 +261,8 @@ function parseSimulation(simulation, context) {
   const tokenChanges = Array.from(tokenIndex.values())
     .map((entry) => ({
       ...entry,
-      delta: Number((entry.postAmount - entry.preAmount).toFixed(9))
+      delta: Number((entry.postAmount - entry.preAmount).toFixed(9)),
+      direction: entry.postAmount - entry.preAmount > 0 ? "in" : "out"
     }))
     .filter((entry) => entry.delta !== 0);
 
@@ -208,10 +274,12 @@ function parseSimulation(simulation, context) {
     logs,
     programs: programs.map((programId) => ({
       programId,
-      label: KNOWN_PROGRAMS[programId] || null
+      label: KNOWN_PROGRAMS[programId] || null,
+      known: Boolean(KNOWN_PROGRAMS[programId])
     })),
     solChanges,
-    tokenChanges
+    tokenChanges,
+    simulationStatus: value.err ? "failed" : "succeeded"
   };
 }
 
@@ -228,47 +296,165 @@ function extractProgramsFromLogs(logs) {
   return Array.from(seen);
 }
 
-async function askOpenAI(parsed) {
+function evaluateRisk(parsed) {
+  const facts = buildFacts(parsed);
+  const reasonCodes = [];
+  const riskReasons = [];
+  const actions = buildHumanActions(parsed, facts);
+  const warnings = facts.warnings.slice();
+  let risk = parsed.simulationStatus === "failed" ? "danger" : "safe";
+
+  if (parsed.simulationStatus === "failed") {
+    addReason(reasonCodes, riskReasons, "simulation_failed", "Simulation failed, so transaction effects are uncertain.");
+  }
+
+  if (facts.totalSolOut >= LARGE_SOL_TRANSFER_THRESHOLD) {
+    risk = maxRisk(risk, "review");
+    addReason(reasonCodes, riskReasons, "large_transfer", `More than ${LARGE_SOL_TRANSFER_THRESHOLD} SOL leaves the wallet.`);
+  }
+
+  if (facts.totalTokenOut > 0 && facts.totalTokenIn === 0) {
+    risk = maxRisk(risk, "danger");
+    addReason(reasonCodes, riskReasons, "token_drain_pattern", "Tokens leave the wallet without an obvious incoming asset.");
+  }
+
+  if (facts.transferCount >= 3) {
+    risk = maxRisk(risk, "review");
+    addReason(reasonCodes, riskReasons, "multi_transfer_batch", "Multiple balance-changing operations happen in one request.");
+  }
+
+  if (facts.unknownPrograms.length > 0) {
+    risk = maxRisk(risk, "review");
+    addReason(reasonCodes, riskReasons, "unknown_program", "The transaction touches programs that are not in the current known-safe set.");
+  }
+
+  if (facts.totalSolOut > 0 && facts.totalTokenIn === 0 && facts.totalTokenOut === 0) {
+    risk = maxRisk(risk, "review");
+    addReason(reasonCodes, riskReasons, "sol_outflow", "SOL leaves the wallet without a matching token inflow.");
+  }
+
+  if (facts.message_preview) {
+    risk = maxRisk(risk, "review");
+    addReason(reasonCodes, riskReasons, "raw_message_signature", "A raw message signature cannot be simulated on-chain.");
+  }
+
+  const summary = buildHeuristicSummary(parsed, facts, reasonCodes);
+  const verdict = buildVerdictLine(risk, reasonCodes);
+  const source = shouldAskModel({ parsed, facts, reasonCodes, risk }) ? "heuristics+model" : "heuristics";
+
+  return {
+    parsed,
+    facts,
+    reasonCodes,
+    riskReasons,
+    actions,
+    warnings,
+    risk,
+    source,
+    baseVerdict: {
+      risk,
+      summary,
+      actions,
+      risk_reasons: dedupeStrings([...riskReasons, ...warnings]),
+      verdict,
+      reason_codes: reasonCodes.slice(),
+      source,
+      simulation_status: parsed.simulationStatus,
+      intercepted_method: parsed.method,
+      facts
+    }
+  };
+}
+
+function buildFacts(parsed) {
+  const solFacts = parsed.solChanges.map((change) => ({
+    account: `#${change.accountIndex}`,
+    deltaSol: change.deltaSol,
+    direction: change.direction
+  }));
+
+  const tokenFacts = parsed.tokenChanges.map((change) => ({
+    mint: shorten(change.mint),
+    owner: change.owner ? shorten(change.owner) : "",
+    delta: change.delta,
+    direction: change.direction
+  }));
+
+  const totalSolOut = parsed.solChanges
+    .filter((change) => change.deltaLamports < 0)
+    .reduce((sum, change) => sum + Math.abs(change.deltaSol), 0);
+  const totalSolIn = parsed.solChanges
+    .filter((change) => change.deltaLamports > 0)
+    .reduce((sum, change) => sum + Math.abs(change.deltaSol), 0);
+  const totalTokenOut = parsed.tokenChanges
+    .filter((change) => change.delta < 0)
+    .reduce((sum, change) => sum + Math.abs(change.delta), 0);
+  const totalTokenIn = parsed.tokenChanges
+    .filter((change) => change.delta > 0)
+    .reduce((sum, change) => sum + Math.abs(change.delta), 0);
+  const knownPrograms = parsed.programs.filter((program) => program.known).map((program) => program.label || shorten(program.programId));
+  const unknownPrograms = parsed.programs.filter((program) => !program.known).map((program) => program.programId);
+  const warnings = [];
+
+  if (parsed.unitsConsumed != null) {
+    warnings.push(`Simulation consumed ${parsed.unitsConsumed} compute units.`);
+  }
+
+  return {
+    sol_changes: solFacts,
+    token_changes: tokenFacts,
+    programs: parsed.programs.map((program) => program.label || shorten(program.programId)),
+    total_sol_out: Number(totalSolOut.toFixed(9)),
+    total_sol_in: Number(totalSolIn.toFixed(9)),
+    total_token_out: Number(totalTokenOut.toFixed(9)),
+    total_token_in: Number(totalTokenIn.toFixed(9)),
+    totalSolOut: Number(totalSolOut.toFixed(9)),
+    totalSolIn: Number(totalSolIn.toFixed(9)),
+    totalTokenOut: Number(totalTokenOut.toFixed(9)),
+    totalTokenIn: Number(totalTokenIn.toFixed(9)),
+    transferCount: parsed.solChanges.length + parsed.tokenChanges.length,
+    knownPrograms,
+    unknownPrograms,
+    warnings,
+    rawMessagePreview: null,
+    message_preview: ""
+  };
+}
+
+async function askOpenAI(parsed, heuristics) {
   const apiKey = await getApiKey();
 
   if (!apiKey) {
     debugLog("missing openai api key");
-    return buildReviewVerdict(
-      "SignSafe could not contact OpenAI because no API key is configured yet.",
-      buildHumanActions(parsed),
-      ["Open the extension options page and save an OpenAI API key before using live analysis."]
-    );
+    return {
+      summary: heuristics.baseVerdict.summary,
+      actions: heuristics.baseVerdict.actions,
+      risk_reasons: heuristics.baseVerdict.risk_reasons,
+      verdict: heuristics.baseVerdict.verdict,
+      source: "heuristics"
+    };
   }
 
   const prompt = [
-    "You are a Solana transaction security analyzer.",
-    "Return only raw JSON. No markdown, no code fences, no commentary.",
+    "You are a Solana transaction security explainer.",
+    "Use the deterministic facts and reason codes below to explain the transaction to a user.",
+    "Do not invent new facts. Be conservative.",
+    "Return only raw JSON with keys: summary, actions, risk_reasons, verdict.",
     "",
-    "Simulation data:",
-    JSON.stringify(parsed, null, 2),
-    "",
-    "Known safe programs:",
-    JSON.stringify(KNOWN_PROGRAMS, null, 2),
-    "",
-    "Return exactly this shape:",
+    "Structured facts:",
     JSON.stringify(
       {
-        risk: "safe | review | danger",
-        summary: "one-sentence plain English summary",
-        actions: ["specific user-visible effects"],
-        risk_reasons: ["specific concerns, or empty array"],
-        verdict: "one-sentence recommendation"
+        intercepted_method: parsed.method,
+        simulation_status: parsed.simulationStatus,
+        reason_codes: heuristics.reasonCodes,
+        facts: heuristics.facts,
+        heuristics_risk: heuristics.risk,
+        heuristic_risk_reasons: heuristics.riskReasons,
+        source_url: parsed.sourceUrl
       },
       null,
       2
-    ),
-    "",
-    "Risk rules:",
-    '- danger: suspicious asset drains, unexplained transfers, simulation errors, or obviously malicious behavior.',
-    '- review: unknown programs, unclear intent, unusual balance changes, or incomplete confidence.',
-    '- safe: recognized intent with no suspicious side effects.',
-    "",
-    "Be conservative. If uncertain, return review."
+    )
   ].join("\n");
 
   const data = await fetchJson(
@@ -281,6 +467,7 @@ async function askOpenAI(parsed) {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
+        reasoning: { effort: "medium" },
         input: prompt,
         max_output_tokens: 500
       })
@@ -288,57 +475,71 @@ async function askOpenAI(parsed) {
     15000
   );
 
+  if (data?.status === "incomplete") {
+    debugLog("openai incomplete response");
+    return {
+      summary: heuristics.baseVerdict.summary,
+      actions: heuristics.baseVerdict.actions,
+      risk_reasons: heuristics.baseVerdict.risk_reasons,
+      verdict: heuristics.baseVerdict.verdict,
+      source: "heuristics"
+    };
+  }
+
   const rawText = extractOpenAIText(data);
   const sanitized = rawText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
 
   try {
-    const parsedVerdict = JSON.parse(sanitized);
-    return normalizeVerdict(parsedVerdict, parsed);
-  } catch (error) {
+    return JSON.parse(sanitized);
+  } catch (_error) {
     debugLog("failed to parse openai response");
-    return buildReviewVerdict(
-      "OpenAI returned an unexpected response, so SignSafe could not fully verify this transaction.",
-      buildHumanActions(parsed),
-      ["The AI response could not be parsed into the expected verdict format."]
-    );
+    return {
+      summary: heuristics.baseVerdict.summary,
+      actions: heuristics.baseVerdict.actions,
+      risk_reasons: heuristics.baseVerdict.risk_reasons,
+      verdict: heuristics.baseVerdict.verdict,
+      source: "heuristics"
+    };
   }
 }
 
-function normalizeVerdict(verdict, parsed) {
-  const fallbackActions = buildHumanActions(parsed);
-  const normalizedRisk = ["safe", "review", "danger"].includes(verdict?.risk) ? verdict.risk : "review";
+function mergeVerdicts(heuristics, modelVerdict) {
+  const base = heuristics.baseVerdict;
 
   return {
-    risk: normalizedRisk,
-    summary: safeString(verdict?.summary) || "Could not summarize this transaction clearly.",
-    actions: normalizeStringArray(verdict?.actions, fallbackActions),
-    risk_reasons: normalizeStringArray(verdict?.risk_reasons, []),
-    verdict:
-      safeString(verdict?.verdict) ||
-      "Review the simulated effects carefully before approving this transaction."
+    risk: base.risk,
+    summary: safeString(modelVerdict?.summary) || base.summary,
+    actions: normalizeStringArray(modelVerdict?.actions, base.actions),
+    risk_reasons: normalizeStringArray(modelVerdict?.risk_reasons, base.risk_reasons),
+    verdict: safeString(modelVerdict?.verdict) || base.verdict,
+    reason_codes: heuristics.reasonCodes.slice(),
+    source: modelVerdict?.source === "heuristics" ? "heuristics" : "heuristics+model",
+    simulation_status: base.simulation_status,
+    intercepted_method: base.intercepted_method,
+    facts: base.facts
   };
 }
 
-function buildHumanActions(parsed) {
+function shouldAskModel(heuristics) {
+  return heuristics.parsed.simulationStatus === "succeeded";
+}
+
+function buildHumanActions(parsed, facts) {
   const actions = [];
 
-  for (const change of parsed.solChanges) {
-    const direction = change.deltaSol > 0 ? "receives" : "spends";
-    actions.push(`Account #${change.accountIndex} ${direction} ${Math.abs(change.deltaSol)} SOL.`);
+  for (const change of facts.sol_changes) {
+    const direction = change.direction === "in" ? "receives" : "spends";
+    actions.push(`${change.account} ${direction} ${Math.abs(change.deltaSol)} SOL.`);
   }
 
-  for (const change of parsed.tokenChanges) {
-    const direction = change.delta > 0 ? "receives" : "sends";
-    actions.push(
-      `Token account #${change.accountIndex} ${direction} ${Math.abs(change.delta)} units of mint ${shorten(change.mint)}.`
-    );
+  for (const change of facts.token_changes) {
+    const direction = change.direction === "in" ? "receives" : "sends";
+    actions.push(`${direction === "receives" ? "Receive" : "Send"} ${Math.abs(change.delta)} of ${change.mint}.`);
   }
 
   if (actions.length === 0 && Array.isArray(parsed.programs) && parsed.programs.length > 0) {
     for (const program of parsed.programs.slice(0, 5)) {
-      actions.push(
-        `Invoke ${program.label || "unknown"} program ${shorten(program.programId)} during ${parsed.method}.`
-      );
+      actions.push(`Invoke ${program.label || "unknown"} program ${shorten(program.programId)} during ${parsed.method}.`);
     }
   }
 
@@ -350,14 +551,90 @@ function buildHumanActions(parsed) {
   return actions.slice(0, 8);
 }
 
-function buildReviewVerdict(summary, actions, riskReasons) {
+function buildHeuristicSummary(parsed, facts, reasonCodes) {
+  if (parsed.simulationStatus === "failed") {
+    return "The transaction could not be simulated successfully, so its effects are uncertain.";
+  }
+
+  if (reasonCodes.includes("token_drain_pattern")) {
+    return "This transaction moves tokens out of the wallet without an obvious incoming asset.";
+  }
+
+  if (facts.total_sol_out > 0 && facts.total_token_in > 0) {
+    return "This transaction spends SOL and receives another asset in return.";
+  }
+
+  if (facts.total_sol_out > 0 && facts.total_token_in === 0) {
+    return "This transaction spends SOL without a clearly detected incoming asset.";
+  }
+
+  if (facts.total_token_in > 0) {
+    return "This transaction changes token balances and may create or receive assets.";
+  }
+
+  return "This transaction interacts with Solana programs but has limited visible balance changes.";
+}
+
+function buildVerdictLine(risk, reasonCodes) {
+  if (risk === "danger") {
+    return "Do not proceed unless you fully trust the dApp and every asset movement matches your intent.";
+  }
+
+  if (reasonCodes.includes("unknown_program")) {
+    return "Review the program interactions carefully before signing.";
+  }
+
+  return risk === "safe"
+    ? "Proceed if the amounts and programs match what you expected."
+    : "Proceed only if you fully understand the transaction effects.";
+}
+
+function buildReviewVerdict(summary, facts, reasonCodes, options = {}) {
   return {
-    risk: "review",
+    risk: options.risk || "review",
     summary,
-    actions: normalizeStringArray(actions, ["Review the transaction details manually before signing."]),
-    risk_reasons: normalizeStringArray(riskReasons, []),
-    verdict: "Proceed only if you fully understand the transaction effects."
+    actions: normalizeStringArray(options.actions, ["Review the transaction details manually before signing."]),
+    risk_reasons: normalizeStringArray(options.riskReasons, []),
+    verdict: options.verdict || "Proceed only if you fully understand the transaction effects.",
+    reason_codes: Array.isArray(reasonCodes) ? reasonCodes.slice() : [],
+    source: options.source || "fallback",
+    simulation_status: options.simulationStatus || "unknown",
+    intercepted_method: options.interceptedMethod || "unknown",
+    facts
   };
+}
+
+function buildFallbackFacts(context) {
+  return {
+    sol_changes: [],
+    token_changes: [],
+    programs: [],
+    total_sol_out: 0,
+    total_sol_in: 0,
+    total_token_out: 0,
+    total_token_in: 0,
+    transferCount: 0,
+    knownPrograms: [],
+    unknownPrograms: [],
+    warnings: [],
+    rawMessagePreview: null,
+    message_preview: "",
+    source_url: context?.sourceUrl || ""
+  };
+}
+
+function maxRisk(left, right) {
+  const order = { safe: 0, review: 1, danger: 2 };
+  return order[right] > order[left] ? right : left;
+}
+
+function addReason(reasonCodes, riskReasons, code, sentence) {
+  if (!reasonCodes.includes(code)) {
+    reasonCodes.push(code);
+  }
+  if (!riskReasons.includes(sentence)) {
+    riskReasons.push(sentence);
+  }
 }
 
 function normalizeStringArray(value, fallback) {
@@ -365,11 +642,12 @@ function normalizeStringArray(value, fallback) {
     return fallback.slice();
   }
 
-  const cleaned = value
-    .map((entry) => safeString(entry))
-    .filter(Boolean);
+  const cleaned = value.map((entry) => safeString(entry)).filter(Boolean);
+  return cleaned.length > 0 ? dedupeStrings(cleaned) : fallback.slice();
+}
 
-  return cleaned.length > 0 ? cleaned : fallback.slice();
+function dedupeStrings(values) {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
 function safeString(value) {
@@ -390,6 +668,10 @@ async function getApiKey() {
 }
 
 function extractOpenAIText(data) {
+  if (typeof data?.output_text === "string" && data.output_text.trim()) {
+    return data.output_text.trim();
+  }
+
   if (!Array.isArray(data?.output)) {
     return "";
   }
@@ -408,6 +690,24 @@ function extractOpenAIText(data) {
   }
 
   return parts.join("\n").trim();
+}
+
+function getCachedVerdict(key) {
+  const entry = verdictCache.get(key);
+  if (!entry) {
+    return null;
+  }
+
+  if (Date.now() - entry.at > VERDICT_CACHE_TTL_MS) {
+    verdictCache.delete(key);
+    return null;
+  }
+
+  return entry.verdict;
+}
+
+function setCachedVerdict(key, verdict) {
+  verdictCache.set(key, { at: Date.now(), verdict });
 }
 
 async function fetchJson(url, options, timeoutMs) {

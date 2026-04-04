@@ -4,6 +4,7 @@
   const DEBUG = true;
   let analysisInProgress = false;
 
+  syncDebugState();
   injectPageHook();
 
   window.addEventListener("message", async (event) => {
@@ -61,10 +62,19 @@
     if (message.isSignMessage) {
       const session = createOverlaySession();
       try {
+        await session.showLoading({
+          phase: "message",
+          title: "Reviewing signature request",
+          detail: "Preparing a blind-signature warning before your wallet prompt appears."
+        });
         debugLog("showing signMessage overlay");
         const approved = await session.showVerdict(
           {
             risk: "review",
+            intercepted_method: "signMessage",
+            simulation_status: "not-applicable",
+            source: "heuristics",
+            reason_codes: ["raw_message_signature"],
             summary: "A dApp is requesting your wallet signature on a raw message.",
             actions: [
               "Sign arbitrary bytes that could represent any off-chain action.",
@@ -74,7 +84,17 @@
               "signMessage is often used in phishing attacks to capture blind signatures.",
               "Only approve if you initiated this action and trust the dApp."
             ],
-            verdict: "Only sign if you understand what you are authorizing."
+            verdict: "Only sign if you understand what you are authorizing.",
+            facts: {
+              intercepted_method: "signMessage",
+              simulation_status: "not-applicable",
+              source: "heuristics",
+              reason_codes: ["raw_message_signature"],
+              message_preview: message.messagePreview || "Preview unavailable.",
+              sol_changes: [],
+              token_changes: [],
+              programs: []
+            }
           },
           { current: 1, total: 1 }
         );
@@ -89,11 +109,12 @@
     try {
       debugLog("showing loading overlay", message.method, message.transactions.length);
       await session.showLoading({
+        phase: "review",
         title:
           message.transactions.length > 1
             ? `Analyzing ${message.transactions.length} transactions`
             : "Analyzing transaction",
-        detail: "Simulating on-chain effects and preparing a plain-English verdict."
+        detail: "Running simulation, deterministic checks, and explanation generation."
       });
 
       const verdicts = await Promise.all(
@@ -255,5 +276,19 @@
     }
 
     console.log("[SignSafe content]", ...args);
+  }
+
+  function isDebugEnabled() {
+    try {
+      return true;
+    } catch (_error) {
+      return true;
+    }
+  }
+
+  function syncDebugState() {
+    chrome.runtime.sendMessage({ type: "SET_DEBUG", enabled: DEBUG }, () => {
+      void chrome.runtime.lastError;
+    });
   }
 })();

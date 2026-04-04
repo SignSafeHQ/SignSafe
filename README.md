@@ -22,14 +22,34 @@ SignSafe is a Chrome extension that intercepts Solana wallet signing requests, s
 
 ## Demo Page
 
-Open `chrome-extension://<EXTENSION_ID>/demo.html` to preview the three canned hackathon scenarios:
+Open `chrome-extension://<EXTENSION_ID>/demo.html` to preview the canned hackathon scenarios:
 
 - Jupiter swap
 - Wallet drainer
 - Metaplex NFT mint
+- Login signature
 
-The demo page renders the same overlay used during live interception, but with bundled fixture verdicts instead of a real wallet call.
+The demo page renders the same overlay used during live interception, but with bundled fixture verdicts instead of a real wallet call. The fixtures now include structured facts and a raw-message preview example so the richer overlay states stay testable without a live wallet.
 
 ## Playground Testing
 
 Use [playground-test-snippet.js](/home/r00t/code/signsafe/playground-test-snippet.js) as a browser-console snippet on `https://beta.solpg.io` when you want deterministic wallet-method tests against Phantom or Solflare on devnet.
+
+## Local Test DApp
+
+For a deterministic localhost harness, serve [index.html](/home/r00t/code/signsafe/test-dapp/index.html) from the `test-dapp/` folder:
+
+```bash
+python3 -m http.server 8788 --directory test-dapp
+```
+
+Then open `http://127.0.0.1:8788` and use the core buttons in order:
+
+1. `Connect`
+2. `Sign Message`
+3. `Sign Transaction`
+4. `Send Transaction`
+
+The page also includes `Batch Sign All` and `Multi-Instruction Send` to exercise `signAllTransactions` and a multi-instruction transaction shape.
+
+This page uses a 1-lamport self-transfer on devnet and is meant to trigger SignSafe on a controlled localhost origin instead of relying on third-party dApps.
