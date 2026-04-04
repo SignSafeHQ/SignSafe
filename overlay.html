@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SignSafe Overlay</title>
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/icon48.png" />
     <link rel="stylesheet" href="overlay.css" />
   </head>
   <body>
@@ -13,7 +15,9 @@
         <span id="focus-anchor" tabindex="-1"></span>
         <div id="eyebrow">SignSafe</div>
 
+        <!-- ── Loading ── -->
         <div id="loading-state" class="state">
+          <div class="spinner-ring"></div>
           <div id="loading-phase" class="phase-pill">Preparing</div>
           <div id="step-bar">
             <div class="step active" id="step-simulate">
@@ -29,31 +33,36 @@
           <h1 id="loading-title">Analyzing transaction</h1>
         </div>
 
+        <!-- ── Verdict ── -->
         <div id="verdict-state" class="state hidden">
-          <div class="verdict-header">
-            <div id="risk-stamp"></div>
-            <div id="method-badge" class="meta-badge"></div>
+          <div id="risk-header-area">
+            <div class="verdict-header">
+              <div id="risk-stamp"></div>
+              <div id="method-badge" class="meta-badge"></div>
+            </div>
+            <div id="progress-label" class="subtle"></div>
+            <h1 id="summary"></h1>
           </div>
-          <div id="progress-label" class="subtle"></div>
-          <h1 id="summary"></h1>
-          <p id="verdict-text" class="verdict-callout"></p>
-          <section id="facts-section">
-            <div class="section-label">Key facts</div>
-            <div id="facts-grid" class="facts-grid"></div>
-          </section>
-          <section>
-            <div class="section-label">What this transaction will do</div>
-            <div class="list-card"><ul id="actions-list"></ul></div>
-          </section>
-          <section id="risks-section" class="hidden">
-            <div class="section-label danger-label">Risk flags</div>
-            <div class="list-card danger-card"><ul id="risks-list"></ul></div>
-          </section>
-          <details id="debug-details" class="debug-details">
-            <summary>Debug details</summary>
-            <div class="debug-meta" id="debug-meta"></div>
-            <pre id="debug-json"></pre>
-          </details>
+          <div id="verdict-body">
+            <p id="verdict-text" class="verdict-callout"></p>
+            <section id="facts-section">
+              <div class="section-label">Key facts</div>
+              <div id="facts-grid" class="facts-grid"></div>
+            </section>
+            <section>
+              <div class="section-label">What this transaction will do</div>
+              <div class="list-card"><ul id="actions-list"></ul></div>
+            </section>
+            <section id="risks-section" class="hidden">
+              <div class="section-label danger-label">Risk flags</div>
+              <div class="list-card danger-card"><ul id="risks-list"></ul></div>
+            </section>
+            <details id="debug-details" class="debug-details">
+              <summary>Debug details</summary>
+              <div class="debug-meta" id="debug-meta"></div>
+              <pre id="debug-json"></pre>
+            </details>
+          </div>
         </div>
 
         <div id="batch-state" class="state hidden">

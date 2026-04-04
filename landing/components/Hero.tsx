@@ -208,9 +208,9 @@ export default function Hero() {
                 border: "1px solid rgba(43,111,255,0.2)",
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z" />
-              </svg>
+              <span className="leading-none" aria-hidden="true">
+                🛡️
+              </span>
               Free Chrome Extension · Solana
             </div>
 

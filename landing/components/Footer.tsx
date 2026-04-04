@@ -1,29 +1,3 @@
-function ShieldLogo({ size = 28 }: { size?: number }) {
-  return (
-    <div
-      className="flex items-center justify-center flex-shrink-0"
-      style={{
-        width: size,
-        height: size,
-        background: "linear-gradient(135deg, #2b6fff, #1a4fcc)",
-        borderRadius: Math.round(size * 0.28),
-      }}
-    >
-      <svg
-        width={size * 0.6}
-        height={size * 0.6}
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <path
-          d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
-          fill="white"
-        />
-      </svg>
-    </div>
-  );
-}
-
 function GitHubIcon() {
   return (
     <svg
@@ -67,7 +41,9 @@ export default function Footer() {
           {/* Brand */}
           <div className="flex flex-col items-center md:items-start gap-3 text-center md:text-left">
             <a href="#" className="flex items-center gap-2.5">
-              <ShieldLogo size={30} />
+              <span className="text-2xl leading-none" aria-hidden="true">
+                🛡️
+              </span>
               <span
                 className="text-lg font-bold tracking-tight"
                 style={{ color: "#0f1f35" }}

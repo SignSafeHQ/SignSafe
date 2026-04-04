@@ -12,6 +12,10 @@ export const metadata: Metadata = {
   title: "SignSafe — Know what you're signing",
   description:
     "SignSafe intercepts every Solana wallet request, simulates the transaction on-chain, and shows you an AI-powered plain-English verdict before the popup appears. Stay safe from wallet drainers and scams.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   keywords: [
     "Solana",
     "wallet security",

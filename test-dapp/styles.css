@@ -46,12 +46,21 @@ code {
 }
 
 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 12px;
   color: var(--accent-dark);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.eyebrow-icon {
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: normal;
 }
 
 h1 {

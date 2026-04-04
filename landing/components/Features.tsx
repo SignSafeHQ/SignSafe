@@ -148,12 +148,9 @@ export default function Features() {
             className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
             style={{ background: "linear-gradient(135deg, #2b6fff, #1a4fcc)" }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
-                fill="white"
-              />
-            </svg>
+            <span className="text-3xl leading-none" aria-hidden="true">
+              🛡️
+            </span>
           </div>
           <h3 className="text-2xl font-bold text-white mb-3">
             Stay safe on Solana

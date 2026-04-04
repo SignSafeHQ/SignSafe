@@ -4,21 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SignSafe Setup</title>
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/icon48.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       :root {
-        color-scheme: light;
-        --ink: #0f1f35;
-        --muted: #536277;
-        --line: rgba(15, 31, 53, 0.10);
-        --safe-bg: #d6f5e3;
-        --safe-ink: #0a5c35;
-        --review-bg: #fff0c2;
-        --review-ink: #7a4c00;
-        --danger-bg: #ffe4e3;
-        --danger-ink: #991f1c;
+        color-scheme: dark;
+        --ink:         #dde4f0;
+        --ink-muted:   #5e7294;
+        --ink-dim:     #38506b;
+        --line:        rgba(255,255,255,0.06);
+        --border:      rgba(255,255,255,0.09);
+        --bg-page:     #060a14;
+        --bg-panel:    #0b1120;
+        --bg-card:     rgba(255,255,255,0.04);
+        --bg-input:    rgba(255,255,255,0.05);
+
+        --safe-color:  #22c97b;
+        --safe-bg:     rgba(34,201,123,0.10);
+        --safe-border: rgba(34,201,123,0.22);
+
+        --review-color:  #f0a429;
+        --review-bg:     rgba(240,164,41,0.10);
+        --review-border: rgba(240,164,41,0.24);
+
+        --danger-color:  #f04a4a;
+        --danger-bg:     rgba(240,74,74,0.10);
+        --danger-border: rgba(240,74,74,0.26);
+
+        --accent:        #4d8fff;
+        --accent-bg:     rgba(77,143,255,0.10);
+        --accent-border: rgba(77,143,255,0.24);
       }
 
       * { box-sizing: border-box; }
@@ -26,20 +44,23 @@
       body {
         margin: 0;
         padding: 40px 24px;
-        background: linear-gradient(160deg, #edf1f8, #e6ecf5);
+        background:
+          radial-gradient(ellipse 60% 40% at 70% 10%, rgba(77,143,255,0.06), transparent),
+          radial-gradient(ellipse 40% 30% at 20% 85%, rgba(120,80,255,0.04), transparent),
+          #060a14;
         min-height: 100vh;
         color: var(--ink);
         font-family: "Inter", "Segoe UI", sans-serif;
       }
 
       main {
-        max-width: 520px;
+        max-width: 440px;
         margin: 0 auto;
-        padding: 32px;
-        border-radius: 22px;
-        background: #ffffff;
-        box-shadow: 0 8px 40px rgba(15, 31, 53, 0.12);
-        border: 1px solid rgba(255, 255, 255, 0.7);
+        padding: 28px 28px 24px;
+        border-radius: 18px;
+        background: var(--bg-panel);
+        box-shadow: 0 32px 100px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+        border: 1px solid var(--border);
       }
 
       /* ── Wordmark ── */
@@ -47,61 +68,56 @@
         display: inline-flex;
         align-items: center;
         gap: 9px;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
       }
 
       .wordmark-shield {
         width: 30px;
         height: 30px;
-        background: linear-gradient(135deg, #2b6fff, #1a50d4);
+        background: linear-gradient(140deg, #3a7aff, #1a4ec8);
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 3px 10px rgba(43, 111, 255, 0.32);
+        box-shadow: 0 3px 12px rgba(58,122,255,0.35);
         flex-shrink: 0;
       }
 
-      .wordmark-shield svg { width: 16px; height: 16px; fill: white; }
-      .wordmark-text { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+      .wordmark-shield svg { width: 15px; height: 15px; fill: white; }
+      .wordmark-text { font-size: 16px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
 
       /* ── Progress dots ── */
       .step-dots {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 22px;
+        gap: 5px;
+        margin-bottom: 20px;
       }
 
       .step-dot {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
         border-radius: 999px;
-        background: var(--line);
+        background: rgba(255,255,255,0.10);
         transition: background 240ms ease, width 240ms ease;
       }
 
-      .step-dot.active {
-        background: #2b6fff;
-        width: 20px;
-      }
-
-      .step-dot.done {
-        background: #1a9955;
-      }
+      .step-dot.active { background: var(--accent); width: 18px; }
+      .step-dot.done   { background: var(--safe-color); }
 
       /* ── Headings ── */
       h1 {
-        margin: 0 0 5px;
-        font-size: 22px;
+        margin: 0 0 4px;
+        font-size: 20px;
         font-weight: 700;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.025em;
+        color: var(--ink);
       }
 
       .subtitle {
         margin: 0 0 20px;
-        color: var(--muted);
-        font-size: 14px;
+        color: var(--ink-muted);
+        font-size: 13px;
         line-height: 1.6;
       }
 
@@ -109,27 +125,28 @@
       .warning-box {
         display: flex;
         align-items: flex-start;
-        gap: 9px;
-        padding: 11px 14px;
-        margin-bottom: 22px;
+        gap: 10px;
+        padding: 11px 13px;
+        margin-bottom: 20px;
         background: var(--review-bg);
-        color: var(--review-ink);
-        border-radius: 11px;
-        font-size: 13px;
-        line-height: 1.55;
-        border: 1px solid rgba(122, 76, 0, 0.16);
+        color: var(--review-color);
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.6;
+        border: 1px solid var(--review-border);
       }
 
-      .warning-box svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; }
-      .warning-box a { color: var(--review-ink); font-weight: 600; }
+      .warning-box svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+      .warning-box a { color: var(--review-color); font-weight: 700; }
 
       /* ── Label ── */
       label {
         display: block;
-        margin-bottom: 7px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--ink);
+        margin-bottom: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--ink-muted);
+        letter-spacing: 0.04em;
       }
 
       /* ── Input row ── */
@@ -140,58 +157,59 @@
 
       #api-key {
         width: 100%;
-        padding: 13px 48px 13px 14px;
-        border: 1.5px solid var(--line);
-        border-radius: 12px;
+        padding: 12px 46px 12px 13px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
         font: inherit;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--ink);
-        background: #fafbfc;
-        transition: border-color 140ms ease, box-shadow 140ms ease;
+        background: var(--bg-input);
+        transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
         outline: none;
+        font-family: "SF Mono", "Fira Code", monospace;
       }
 
       #api-key:focus {
-        border-color: #2b6fff;
-        box-shadow: 0 0 0 3px rgba(43, 111, 255, 0.14);
-        background: #ffffff;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-bg);
+        background: rgba(255,255,255,0.07);
       }
 
       #api-key.invalid {
-        border-color: #d63b37;
-        box-shadow: 0 0 0 3px rgba(214, 59, 55, 0.12);
+        border-color: var(--danger-color);
+        box-shadow: 0 0 0 3px var(--danger-bg);
       }
 
-      #api-key::placeholder { color: #a0aab8; }
+      #api-key::placeholder { color: var(--ink-dim); }
 
       #toggle-key {
         position: absolute;
-        right: 10px;
+        right: 8px;
         top: 50%;
         transform: translateY(-50%);
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
         border: none;
         background: transparent;
         cursor: pointer;
-        color: var(--muted);
-        border-radius: 8px;
+        color: var(--ink-muted);
+        border-radius: 7px;
         padding: 0;
         transition: color 120ms ease, background 120ms ease;
       }
 
-      #toggle-key:hover { color: var(--ink); background: rgba(15, 31, 53, 0.07); }
-      #toggle-key svg { width: 17px; height: 17px; }
+      #toggle-key:hover { color: var(--ink); background: rgba(255,255,255,0.07); }
+      #toggle-key svg { width: 16px; height: 16px; }
 
-      /* ── Inline key hint ── */
+      /* ── Key hint ── */
       #key-hint {
-        min-height: 18px;
+        min-height: 17px;
         margin-bottom: 14px;
-        font-size: 12px;
-        color: #d63b37;
+        font-size: 11px;
+        color: var(--danger-color);
         padding-left: 2px;
       }
 
@@ -208,71 +226,67 @@
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        min-height: 44px;
-        padding: 0 22px;
-        border: none;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #2b6fff, #1a50d4);
+        min-height: 42px;
+        padding: 0 20px;
+        border: 1px solid rgba(58,122,255,0.3);
+        border-radius: 10px;
+        background: linear-gradient(140deg, #3a7aff, #1a4ec8);
         color: white;
         font: inherit;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         cursor: pointer;
-        box-shadow: 0 3px 12px rgba(43, 111, 255, 0.28);
-        transition: background 140ms ease, box-shadow 140ms ease, transform 100ms ease;
+        box-shadow: 0 3px 14px rgba(58,122,255,0.30);
+        transition: box-shadow 140ms ease, transform 100ms ease, opacity 100ms ease;
       }
 
-      #save:hover {
-        background: linear-gradient(135deg, #1f5ce8, #1445be);
-        box-shadow: 0 5px 18px rgba(43, 111, 255, 0.36);
-        transform: translateY(-1px);
-      }
-
-      #save:active { transform: translateY(0); opacity: 0.9; }
+      #save:hover { box-shadow: 0 6px 22px rgba(58,122,255,0.45); transform: translateY(-1px); }
+      #save:active { transform: translateY(0); opacity: 0.88; }
 
       /* ── Test button ── */
       #test-connection {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        min-height: 44px;
+        min-height: 42px;
         padding: 0 16px;
-        border: 1.5px solid var(--line);
-        border-radius: 12px;
-        background: transparent;
-        color: var(--muted);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--bg-card);
+        color: var(--ink-muted);
         font: inherit;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
       }
 
       #test-connection:hover {
-        border-color: #2b6fff;
-        color: #2b6fff;
-        background: rgba(43, 111, 255, 0.05);
+        border-color: var(--accent-border);
+        color: var(--accent);
+        background: var(--accent-bg);
       }
 
-      #test-connection:disabled { opacity: 0.5; cursor: default; }
+      #test-connection:disabled { opacity: 0.4; cursor: default; }
 
       /* ── Status box ── */
       #status {
         display: none;
         align-items: center;
         gap: 8px;
-        margin-top: 14px;
-        padding: 10px 14px;
-        border-radius: 10px;
-        font-size: 13px;
+        margin-top: 12px;
+        padding: 10px 13px;
+        border-radius: 9px;
+        font-size: 12px;
         font-weight: 600;
         animation: fadeIn 180ms ease;
+        border: 1px solid transparent;
       }
 
-      #status.success { display: flex; background: var(--safe-bg); color: var(--safe-ink); border: 1px solid rgba(10, 92, 53, 0.18); }
-      #status.error   { display: flex; background: var(--danger-bg); color: var(--danger-ink); border: 1px solid rgba(153, 31, 28, 0.18); }
-      #status.testing { display: flex; background: rgba(43, 111, 255, 0.08); color: #1a50d4; border: 1px solid rgba(43, 111, 255, 0.18); }
-      #status svg { width: 15px; height: 15px; flex-shrink: 0; }
+      #status.success { display: flex; background: var(--safe-bg);   color: var(--safe-color);   border-color: var(--safe-border); }
+      #status.error   { display: flex; background: var(--danger-bg); color: var(--danger-color); border-color: var(--danger-border); }
+      #status.testing { display: flex; background: var(--accent-bg); color: var(--accent);       border-color: var(--accent-border); }
+      #status svg { width: 14px; height: 14px; flex-shrink: 0; }
 
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(-4px); }
@@ -281,7 +295,7 @@
 
       /* ── Divider ── */
       hr {
-        margin: 24px 0;
+        margin: 22px 0;
         border: none;
         border-top: 1px solid var(--line);
       }
@@ -290,8 +304,8 @@
       .next-steps {
         display: none;
         flex-direction: column;
-        gap: 10px;
-        margin-top: 20px;
+        gap: 8px;
+        margin-top: 18px;
       }
 
       .next-steps.visible { display: flex; }
@@ -300,48 +314,48 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 14px 16px;
-        border-radius: 12px;
-        border: 1.5px solid var(--line);
-        background: #fafbfc;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
         text-decoration: none;
         color: var(--ink);
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: border-color 140ms ease, background 140ms ease, transform 100ms ease;
       }
 
       .next-step:hover {
-        border-color: #2b6fff;
-        background: rgba(43, 111, 255, 0.04);
+        border-color: var(--accent-border);
+        background: var(--accent-bg);
         transform: translateY(-1px);
       }
 
       .next-step-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 9px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        background: rgba(43, 111, 255, 0.10);
-        color: #2b6fff;
+        background: var(--accent-bg);
+        color: var(--accent);
+        border: 1px solid var(--accent-border);
       }
 
-      .next-step-icon svg { width: 17px; height: 17px; }
+      .next-step-icon svg { width: 15px; height: 15px; }
 
       .next-step-body { flex: 1; }
-      .next-step-title { font-size: 14px; font-weight: 700; color: var(--ink); }
-      .next-step-desc  { font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 1px; }
+      .next-step-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+      .next-step-desc  { font-size: 11px; font-weight: 400; color: var(--ink-muted); margin-top: 1px; }
+      .next-step-arrow { color: var(--ink-dim); font-size: 15px; }
 
-      .next-step-arrow { color: var(--muted); font-size: 16px; }
+      /* ── Page footer ── */
+      .page-footer { font-size: 11px; color: var(--ink-dim); }
 
-      /* ── Footer ── */
-      .page-footer { font-size: 12px; color: var(--muted); }
-
-      :focus-visible { outline: 2px solid #2b6fff; outline-offset: 2px; }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     </style>
   </head>
   <body>
@@ -406,7 +420,7 @@
           <span class="next-step-arrow">→</span>
         </a>
         <div class="next-step" id="reload-ext" role="button" tabindex="0">
-          <div class="next-step-icon" style="background: rgba(10,92,53,0.10); color: #0a5c35;">
+          <div class="next-step-icon" style="background: var(--safe-bg); color: var(--safe-color); border-color: var(--safe-border);">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="23 4 23 10 17 10"/>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
