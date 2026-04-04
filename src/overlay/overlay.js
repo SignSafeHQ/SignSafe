@@ -5,11 +5,6 @@
   const OVERLAY_MESSAGE_TYPES = CONSTANTS.MESSAGE_TYPES?.OVERLAY || {};
   const DEBUG_STORAGE_KEY = CONSTANTS.DEBUG_STORAGE_KEY || "signsafe-debug";
   const DEBUG = isDebugEnabled();
-  const riskLabels = {
-    safe: "Safe",
-    review: "Review",
-    danger: "Danger"
-  };
 
   const normalizeFacts = HELPERS.normalizeFacts || ((verdict) => verdict?.facts || {});
   const normalizeArray = HELPERS.normalizeArray || ((value) => (Array.isArray(value) ? value : []));
@@ -81,14 +76,11 @@
     activateState("loading-state");
     setText("loading-phase", phaseLabel(payload.phase));
     setText("loading-title", payload.title || "Analyzing transaction");
-    setText("loading-detail", payload.detail || "Simulating on-chain effects and preparing a plain-English verdict.");
     setButtonState({ loading: true });
 
-    // Reset backdrop tint
     const tint = document.getElementById("backdrop-tint");
     if (tint) tint.className = "";
 
-    // Reset and advance step bar
     const stepSimulate = document.getElementById("step-simulate");
     const stepAI = document.getElementById("step-ai");
     if (stepSimulate) stepSimulate.classList.add("active");
@@ -106,23 +98,32 @@
 
     const risk = normalizeRisk(verdict.risk);
 
-    // Risk icon
-    const iconEl = document.getElementById("risk-icon");
-    if (iconEl) iconEl.innerHTML = riskIconSvg(risk);
-
     // Backdrop tint
     const tint = document.getElementById("backdrop-tint");
     if (tint) tint.className = risk === "safe" ? "" : risk;
+
     const facts = normalizeFacts(verdict);
     const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
     const source = facts.source || verdict.source || "unknown";
     const reasonCodes = normalizeArray(verdict.reason_codes);
 
-    document.getElementById("risk-badge").className = risk;
-    setText("risk-badge", riskLabels[risk]);
+    // Risk stamp (merged icon + label)
+    const stampEl = document.getElementById("risk-stamp");
+    if (stampEl) {
+      stampEl.className = risk;
+      stampEl.innerHTML = riskStampInner(risk);
+    }
+
     setText("method-badge", method ? `Method: ${method}` : "");
     setText("progress-label", meta && meta.total > 1 ? `Transaction ${meta.current} of ${meta.total}` : "");
     setText("summary", verdict.summary || "Unable to analyze this transaction clearly.");
+
+    // Verdict callout with risk-colored left border
+    const verdictTextEl = document.getElementById("verdict-text");
+    if (verdictTextEl) {
+      verdictTextEl.textContent = verdict.verdict || "Proceed only if you fully understand the transaction.";
+      verdictTextEl.className = `verdict-callout ${risk}`;
+    }
 
     renderFacts("facts-grid", facts);
     fillList("actions-list", normalizeArray(verdict.actions), "No visible actions were extracted.");
@@ -137,7 +138,6 @@
       fillList("risks-list", [], "");
     }
 
-    setText("verdict-text", verdict.verdict || "Proceed only if you fully understand the transaction.");
     setText(
       "debug-meta",
       [
@@ -157,7 +157,6 @@
     activateState("batch-state");
     clearTimeout(stepTimerId);
 
-    // Reset backdrop tint for batch
     const tint = document.getElementById("backdrop-tint");
     if (tint) tint.className = "";
 
@@ -196,30 +195,14 @@
     container.innerHTML = "";
 
     const entries = [];
-    if (facts.intercepted_method) {
-      entries.push(["Method", facts.intercepted_method]);
-    }
-    if (facts.simulation_status) {
-      entries.push(["Simulation", facts.simulation_status]);
-    }
-    if (facts.source) {
-      entries.push(["Source", facts.source]);
-    }
-    if (facts.reason_codes && facts.reason_codes.length > 0) {
-      entries.push(["Reason codes", facts.reason_codes.join(", ")]);
-    }
-    if (facts.sol_changes && facts.sol_changes.length > 0) {
-      entries.push(["SOL delta", formatSolChanges(facts.sol_changes)]);
-    }
-    if (facts.token_changes && facts.token_changes.length > 0) {
-      entries.push(["Token delta", formatTokenChanges(facts.token_changes)]);
-    }
-    if (facts.programs && facts.programs.length > 0) {
-      entries.push(["Programs", formatPrograms(facts.programs)]);
-    }
-    if (facts.message_preview) {
-      entries.push(["Message preview", formatMessagePreview(facts.message_preview)]);
-    }
+    if (facts.intercepted_method) entries.push(["Method", facts.intercepted_method]);
+    if (facts.simulation_status) entries.push(["Simulation", facts.simulation_status]);
+    if (facts.source) entries.push(["Source", facts.source]);
+    if (facts.reason_codes && facts.reason_codes.length > 0) entries.push(["Reason codes", facts.reason_codes.join(", ")]);
+    if (facts.sol_changes && facts.sol_changes.length > 0) entries.push(["SOL delta", formatSolChanges(facts.sol_changes)]);
+    if (facts.token_changes && facts.token_changes.length > 0) entries.push(["Token delta", formatTokenChanges(facts.token_changes)]);
+    if (facts.programs && facts.programs.length > 0) entries.push(["Programs", formatPrograms(facts.programs)]);
+    if (facts.message_preview) entries.push(["Message preview", formatMessagePreview(facts.message_preview)]);
 
     const visibleEntries = entries.length > 0 ? entries : [["Facts", "No structured facts were supplied."]];
     for (const [label, value] of visibleEntries) {
@@ -266,47 +249,56 @@
     }
   }
 
-  function riskIconSvg(risk) {
-    const paths = {
-      safe: '<polyline points="6,13 11,18 22,7" stroke-linecap="round" stroke-linejoin="round"/>',
-      review: '<line x1="16" y1="9" x2="16" y2="15"/><circle cx="16" cy="19" r="1.4" fill="currentColor"/>',
-      danger: '<line x1="10" y1="10" x2="22" y2="22"/><line x1="22" y1="10" x2="10" y2="22"/>'
+  function riskStampInner(risk) {
+    const icons = {
+      safe: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4,12 9,17 20,6"/></svg>`,
+      review: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="9" x2="12" y2="13"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>`,
+      danger: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`
     };
-    const strokes = {
-      safe: "var(--safe-ink)",
-      review: "var(--review-ink)",
-      danger: "var(--danger-ink)"
-    };
-    const stroke = strokes[risk] || strokes.review;
-    const path = paths[risk] || paths.review;
-    return `<svg class="${risk}" viewBox="0 0 32 32" fill="none" stroke="${stroke}" stroke-width="2.4"><g transform="translate(4,4)">${path}</g></svg>`;
+    const labels = { safe: "Safe", review: "Review", danger: "Danger" };
+    return `${icons[risk] || icons.review}<span>${labels[risk] || "Review"}</span>`;
   }
 
   function setText(id, value) {
     const el = document.getElementById(id);
-    if (!el) {
-      return;
-    }
-
+    if (!el) return;
     el.textContent = value || "";
   }
 
   function setButtonState({ loading, risk }) {
     const proceed = document.getElementById("btn-proceed");
     const block = document.getElementById("btn-block");
+    const buttons = document.getElementById("buttons");
 
     if (loading) {
       proceed.disabled = true;
+      proceed.className = "";
       block.disabled = false;
+      block.className = "";
       block.textContent = "Cancel";
+      if (buttons) buttons.removeAttribute("data-risk");
       return;
     }
 
+    const r = normalizeRisk(risk);
+
     block.disabled = false;
-    block.textContent = "Block";
     proceed.disabled = false;
-    proceed.className = normalizeRisk(risk);
-    proceed.textContent = "Proceed";
+
+    if (r === "danger") {
+      // Danger: Block is primary, Proceed is demoted
+      block.className = "danger-primary";
+      block.textContent = "Block";
+      proceed.className = "danger";
+      proceed.textContent = "Proceed anyway";
+      if (buttons) buttons.setAttribute("data-risk", "danger");
+    } else {
+      block.className = "";
+      block.textContent = "Block";
+      proceed.className = r;
+      proceed.textContent = "Proceed";
+      if (buttons) buttons.removeAttribute("data-risk");
+    }
   }
 
   function activateState(activeId) {
@@ -317,20 +309,14 @@
 
   function revealPanel() {
     const panel = document.getElementById("panel");
-    if (!panel) {
-      return;
-    }
-
+    if (!panel) return;
     requestAnimationFrame(() => {
       panel.classList.add("visible");
     });
   }
 
   function debugLog(...args) {
-    if (!DEBUG) {
-      return;
-    }
-
+    if (!DEBUG) return;
     console.log("[SignSafe overlay]", ...args);
   }
 

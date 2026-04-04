@@ -12,32 +12,31 @@
       <div id="panel" role="dialog" aria-modal="true" aria-labelledby="loading-title">
         <span id="focus-anchor" tabindex="-1"></span>
         <div id="eyebrow">SignSafe</div>
+
         <div id="loading-state" class="state">
           <div id="loading-phase" class="phase-pill">Preparing</div>
-          <div class="spinner" aria-hidden="true"></div>
-        <div id="step-bar">
-          <div class="step active" id="step-simulate">
-            <div class="step-dot"></div>
-            <span>Simulating</span>
+          <div id="step-bar">
+            <div class="step active" id="step-simulate">
+              <div class="step-dot"></div>
+              <span>Simulating</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step-ai">
+              <div class="step-dot"></div>
+              <span>Asking AI</span>
+            </div>
           </div>
-          <div class="step-line"></div>
-          <div class="step" id="step-ai">
-            <div class="step-dot"></div>
-            <span>Asking AI</span>
-          </div>
-        </div>
           <h1 id="loading-title">Analyzing transaction</h1>
-          <p id="loading-detail">Simulating on-chain effects and preparing a plain-English verdict.</p>
         </div>
 
         <div id="verdict-state" class="state hidden">
-          <div id="risk-icon"></div>
-          <div class="header-row">
-            <div id="risk-badge"></div>
+          <div class="verdict-header">
+            <div id="risk-stamp"></div>
             <div id="method-badge" class="meta-badge"></div>
           </div>
           <div id="progress-label" class="subtle"></div>
           <h1 id="summary"></h1>
+          <p id="verdict-text" class="verdict-callout"></p>
           <section id="facts-section">
             <div class="section-label">Key facts</div>
             <div id="facts-grid" class="facts-grid"></div>
@@ -50,7 +49,6 @@
             <div class="section-label danger-label">Risk flags</div>
             <div class="list-card danger-card"><ul id="risks-list"></ul></div>
           </section>
-          <p id="verdict-text"></p>
           <details id="debug-details" class="debug-details">
             <summary>Debug details</summary>
             <div class="debug-meta" id="debug-meta"></div>

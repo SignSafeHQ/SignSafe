@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SignSafe Technical Specification</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #eef3f8;
+        --panel: rgba(255, 255, 255, 0.92);
+        --ink: #11223a;
+        --muted: #56657b;
+        --line: rgba(17, 34, 58, 0.12);
+        --accent: #215df6;
+        --accent-soft: rgba(33, 93, 246, 0.12);
+        --safe: #10714b;
+        --review: #8b5a00;
+        --danger: #a82420;
+        --shadow: 0 18px 50px rgba(17, 34, 58, 0.12);
+        --radius: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top right, rgba(33, 93, 246, 0.12), transparent 28%),
+          radial-gradient(circle at bottom left, rgba(20, 120, 90, 0.08), transparent 22%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      .page {
+        width: min(1180px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 32px 0 56px;
+      }
+
+      .hero,
+      .section,
+      .diagram,
+      .table-wrap {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius);
+      }
+
+      .hero {
+        padding: 34px 36px 30px;
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 16px 0 10px;
+        font-size: clamp(34px, 5vw, 54px);
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+
+      .lead {
+        max-width: 840px;
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+
+      .hero-grid,
+      .grid-2,
+      .grid-3,
+      .flow-grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1.3fr 1fr;
+        margin-top: 28px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .flow-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .stat,
+      .card,
+      .flow,
+      .note {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .stat,
+      .card,
+      .flow {
+        padding: 18px 18px 16px;
+      }
+
+      .stat h2,
+      .section h2,
+      .card h3,
+      .flow h3 {
+        margin: 0 0 8px;
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 13px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .stat span {
+        display: block;
+        margin-top: 8px;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .stat p,
+      .card p,
+      .flow p,
+      .section p,
+      li {
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .section,
+      .diagram,
+      .table-wrap {
+        padding: 26px 28px;
+        margin-top: 20px;
+      }
+
+      .section h2 {
+        font-size: 28px;
+        letter-spacing: -0.02em;
+      }
+
+      .section h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      ul,
+      ol {
+        margin: 10px 0 0;
+        padding-left: 18px;
+      }
+
+      .diagram pre {
+        margin: 0;
+        padding: 18px;
+        overflow-x: auto;
+        border-radius: 18px;
+        background: #0f1b2e;
+        color: #e9f0ff;
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .mono {
+        font-family: "SFMono-Regular", "Consolas", monospace;
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(17, 34, 58, 0.06);
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .flow {
+        position: relative;
+      }
+
+      .flow::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        right: -12px;
+        width: 24px;
+        height: 2px;
+        background: rgba(17, 34, 58, 0.16);
+      }
+
+      .flow:last-child::after {
+        display: none;
+      }
+
+      .flow .step {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        background: rgba(17, 34, 58, 0.06);
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 14px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .tag {
+        display: inline-block;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .safe {
+        background: rgba(16, 113, 75, 0.12);
+        color: var(--safe);
+      }
+
+      .review {
+        background: rgba(139, 90, 0, 0.12);
+        color: var(--review);
+      }
+
+      .danger {
+        background: rgba(168, 36, 32, 0.12);
+        color: var(--danger);
+      }
+
+      .note {
+        margin-top: 18px;
+        padding: 16px 18px;
+      }
+
+      .footer {
+        margin-top: 22px;
+        text-align: center;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 980px) {
+        .hero-grid,
+        .grid-2,
+        .grid-3,
+        .flow-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .flow::after {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="eyebrow">SignSafe Technical Specification</div>
+        <h1>Transaction analysis and interception architecture for a Chrome Solana security extension</h1>
+        <p class="lead">
+          SignSafe is a Chrome Manifest V3 extension that intercepts Solana wallet signing requests in the page context,
+          simulates transaction effects through Solana RPC, converts the result into a structured risk model, sends those
+          facts to OpenAI for user-facing explanation, and requires explicit user approval before the original wallet method
+          is allowed to continue.
+        </p>
+
+        <div class="hero-grid">
+          <div class="stat">
+            <strong>Runtime Model</strong>
+            <span>Chrome MV3</span>
+            <p>Content script at <span class="mono">document_start</span>, page-world hook injection, service worker analysis, iframe overlay UI.</p>
+          </div>
+          <div class="stat">
+            <strong>Current Providers</strong>
+            <span>OpenAI + Solana RPC</span>
+            <p>Solana simulation happens first. OpenAI receives parsed facts and heuristic reason codes, not a raw wallet popup summary.</p>
+          </div>
+        </div>
+
+        <div class="pill-row">
+          <span class="pill">Wallet methods: signTransaction / signAllTransactions / sendTransaction / signAndSendTransaction / signMessage</span>
+          <span class="pill">Network target: Devnet by default</span>
+          <span class="pill">Local test harness: localhost devnet dApp</span>
+        </div>
+      </section>
+
+      <section class="diagram">
+        <h2>High-Level Runtime Diagram</h2>
+        <pre class="mono">[dApp page]
+    |
+    | wallet method call
+    v
+[src/page/page-hook.js]
+    wraps provider methods in page world
+    posts ANALYZE_REQUEST to window bridge
+    |
+    v
+[src/content/content-script.js]
+    serializes request flow
+    opens overlay session
+    sends ANALYZE_TX to background when needed
+    |
+    v
+[src/background/background.js]
+    delegates to shared/background-analysis.js
+      1. simulateTransaction on Solana RPC
+      2. parse balances, logs, programs
+      3. run deterministic heuristics
+      4. ask OpenAI for explanation
+    |
+    v
+[overlay.html + src/overlay/overlay.js]
+    shows loading state, verdict, facts, risk flags
+    user chooses Proceed or Block
+    |
+    +--> Block: error thrown, wallet method never runs
+    |
+    +--> Proceed: wrapped original wallet method executes</pre>
+      </section>
+
+      <section class="section">
+        <h2>Primary User Flows</h2>
+        <div class="flow-grid">
+          <article class="flow">
+            <div class="step">1. Intercept</div>
+            <h3>Wallet method capture</h3>
+            <p>The page hook wraps Solana provider methods and some <span class="mono">request(...)</span> variants before the dApp reaches the real wallet API.</p>
+          </article>
+          <article class="flow">
+            <div class="step">2. Analyze</div>
+            <h3>Simulation and heuristics</h3>
+            <p>Transactions are base64-serialized, simulated against Solana RPC, then normalized into facts like SOL delta, token delta, and invoked programs.</p>
+          </article>
+          <article class="flow">
+            <div class="step">3. Explain</div>
+            <h3>Model-assisted summary</h3>
+            <p>OpenAI receives structured facts plus risk codes and returns plain-English summary, actions, risk reasons, and verdict text.</p>
+          </article>
+          <article class="flow">
+            <div class="step">4. Decide</div>
+            <h3>Overlay gate</h3>
+            <p>The wallet method resumes only after the user approves inside the SignSafe overlay. Otherwise the request is blocked.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Transaction Workflow</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Transaction methods</h3>
+            <ol>
+              <li>The dApp invokes a transaction-related wallet method.</li>
+              <li><span class="mono">src/page/page-hook.js</span> intercepts and posts an <span class="mono">ANALYZE_REQUEST</span>.</li>
+              <li><span class="mono">src/content/content-script.js</span> creates an overlay session and shows a loading state.</li>
+              <li>The content script sends <span class="mono">ANALYZE_TX</span> to the MV3 background worker.</li>
+              <li><span class="mono">shared/background-analysis.js</span> simulates, parses, evaluates heuristics, and optionally queries OpenAI.</li>
+              <li>The content script renders the verdict and waits for a decision.</li>
+              <li>If approved, the original wallet method executes in the page hook.</li>
+            </ol>
+          </article>
+          <article class="card">
+            <h3>signMessage workflow</h3>
+            <ol>
+              <li>The page hook intercepts <span class="mono">signMessage</span> or a matching request path.</li>
+              <li>There is no on-chain simulation because the payload is not a transaction.</li>
+              <li>The content script opens a heuristic-only warning overlay with a readable message preview when possible.</li>
+              <li>The user can block or allow the blind-signature request.</li>
+            </ol>
+            <div class="note">
+              <strong>Current behavior:</strong> raw message review is conservative by default and treated as a review-risk action, not safe.
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Current Analysis Pipeline</h2>
+        <div class="grid-3">
+          <article class="card">
+            <h3>1. Solana simulation</h3>
+            <p>Uses JSON-RPC <span class="mono">simulateTransaction</span> with base64 transaction input and replacement of recent blockhash for analysis reliability.</p>
+          </article>
+          <article class="card">
+            <h3>2. Deterministic checks</h3>
+            <p>Heuristics inspect total SOL outflow, token drain patterns, multi-transfer batches, unknown programs, simulation failure, and raw-message signatures.</p>
+          </article>
+          <article class="card">
+            <h3>3. OpenAI explanation</h3>
+            <p>OpenAI receives normalized facts and reason codes, then generates user-facing explanation text while the deterministic risk floor remains authoritative.</p>
+          </article>
+        </div>
+
+        <div class="note">
+          <strong>Important:</strong> the current product is not asking AI to infer everything from raw transaction bytes. It first uses Solana simulation and structured heuristics, then uses AI as an explanation layer.
+        </div>
+      </section>
+
+      <section class="table-wrap">
+        <h2>Key Components</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Path</th>
+              <th>Role</th>
+              <th>Responsibility</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="mono">src/page/page-hook.js</td>
+              <td>Page-world interception</td>
+              <td>Wraps wallet provider methods, serializes requests, and gates real wallet execution behind approval.</td>
+            </tr>
+            <tr>
+              <td class="mono">src/content/content-script.js</td>
+              <td>Bridge orchestration</td>
+              <td>Receives page bridge messages, coordinates background analysis, and controls the approval lifecycle.</td>
+            </tr>
+            <tr>
+              <td class="mono">src/content/overlay-session.js</td>
+              <td>Overlay session helper</td>
+              <td>Creates the iframe overlay, posts render messages, and resolves user decisions.</td>
+            </tr>
+            <tr>
+              <td class="mono">src/background/background.js</td>
+              <td>MV3 entrypoint</td>
+              <td>Receives runtime messages and delegates analysis to the shared analysis service.</td>
+            </tr>
+            <tr>
+              <td class="mono">shared/background-analysis.js</td>
+              <td>Analysis engine</td>
+              <td>Performs Solana simulation, parsing, heuristics, OpenAI explanation, fallback handling, and caching.</td>
+            </tr>
+            <tr>
+              <td class="mono">src/overlay/overlay.js</td>
+              <td>Overlay runtime</td>
+              <td>Renders verdict UI, risk labels, facts, batch summaries, and decision buttons.</td>
+            </tr>
+            <tr>
+              <td class="mono">shared/constants.js</td>
+              <td>Protocol contract</td>
+              <td>Defines channels, message types, and shared storage keys across all runtime surfaces.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="table-wrap">
+        <h2>Risk Semantics</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Risk</th>
+              <th>Meaning</th>
+              <th>Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag safe">Safe</span></td>
+              <td>Simulation and heuristics show behavior consistent with the apparent intent.</td>
+              <td>Simple swap-like or low-risk balance change with known programs.</td>
+            </tr>
+            <tr>
+              <td><span class="tag review">Review</span></td>
+              <td>Behavior may be legitimate but needs inspection or lacks strong certainty.</td>
+              <td>Unknown program interaction, large SOL outflow, raw message signing, or complex mint/setup behavior.</td>
+            </tr>
+            <tr>
+              <td><span class="tag danger">Danger</span></td>
+              <td>Deterministic checks indicate a strong risk pattern.</td>
+              <td>Simulation failure, token drain pattern, or suspicious asset movement without clear offsetting inflow.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Current Data Contracts</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Page to content</h3>
+            <p class="mono">ANALYZE_REQUEST</p>
+            <ul>
+              <li><span class="mono">method</span></li>
+              <li><span class="mono">providerLabel</span></li>
+              <li><span class="mono">transactions[]</span></li>
+              <li><span class="mono">sourceUrl</span></li>
+              <li><span class="mono">isSignMessage</span></li>
+              <li><span class="mono">messagePreview</span></li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Background verdict shape</h3>
+            <ul>
+              <li><span class="mono">risk</span></li>
+              <li><span class="mono">summary</span></li>
+              <li><span class="mono">actions[]</span></li>
+              <li><span class="mono">risk_reasons[]</span></li>
+              <li><span class="mono">verdict</span></li>
+              <li><span class="mono">reason_codes[]</span></li>
+              <li><span class="mono">simulation_status</span></li>
+              <li><span class="mono">intercepted_method</span></li>
+              <li><span class="mono">facts</span></li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Configuration and Local Development</h2>
+        <div class="grid-2">
+          <article class="card">
+            <h3>Extension setup</h3>
+            <ul>
+              <li>Load unpacked from the repository root.</li>
+              <li>Set an OpenAI API key in the options page or use local-only fallback from <span class="mono">.env.local</span>.</li>
+              <li>Current default RPC endpoint is Solana devnet.</li>
+            </ul>
+          </article>
+          <article class="card">
+            <h3>Local harness</h3>
+            <p>Serve the local devnet dApp for deterministic testing:</p>
+            <pre class="mono">python3 -m http.server 8788 --directory test-dapp</pre>
+            <p>Then test <span class="mono">Connect</span>, <span class="mono">Sign Message</span>, <span class="mono">Sign Transaction</span>, and <span class="mono">Send Transaction</span>.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Known Constraints</h2>
+        <div class="grid-3">
+          <article class="card">
+            <h3>Provider interception</h3>
+            <p>Coverage is best-effort across direct wallet methods and some request-style paths. Wallet-standard edge cases can still vary by dApp.</p>
+          </article>
+          <article class="card">
+            <h3>Client-side key usage</h3>
+            <p>The MVP uses a client-side OpenAI key for local testing. This is acceptable for demos, not for a production release.</p>
+          </article>
+          <article class="card">
+            <h3>Simulation limits</h3>
+            <p>Versioning, RPC anomalies, and simulation failure still degrade to conservative review behavior rather than guaranteed interpretation.</p>
+          </article>
+        </div>
+      </section>
+
+      <p class="footer">SignSafe technical spec based on the current implementation state as of April 1, 2026.</p>
+    </main>
+  </body>
+</html>

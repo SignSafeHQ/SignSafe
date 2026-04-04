@@ -1,135 +1,193 @@
 "use client";
 
+// Faithful replica of the real overlay panel — light card, same tokens
 function MockOverlayCard() {
   return (
-    <div
-      className="w-full max-w-sm mx-auto rounded-card-lg overflow-hidden shadow-overlay"
-      style={{ background: "#1a2332", border: "1px solid rgba(255,255,255,0.08)" }}
-    >
-      {/* Header */}
+    <div className="relative">
+      {/* Dark backdrop — shows context that this appears over a dApp */}
       <div
-        className="flex items-center gap-3 px-5 pt-5 pb-4"
-        style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}
+        className="absolute inset-0 rounded-card-lg"
+        style={{
+          background: "rgba(5, 10, 23, 0.78)",
+          borderRadius: 24,
+          transform: "scale(1.06)",
+          zIndex: 0,
+        }}
+      />
+
+      {/* Light panel — matches real overlay exactly */}
+      <div
+        className="relative w-full max-w-sm mx-auto rounded-card-lg"
+        style={{
+          zIndex: 1,
+          background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247,246,243,0.99))",
+          border: "1px solid rgba(255,255,255,0.65)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.32)",
+          padding: "24px",
+        }}
       >
+        {/* Eyebrow watermark */}
         <div
-          className="flex items-center justify-center rounded-xl flex-shrink-0"
           style={{
-            width: 36,
-            height: 36,
-            background: "linear-gradient(135deg, #2b6fff, #1a4fcc)",
-            borderRadius: 10,
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "rgba(83,98,119,0.45)",
+            marginBottom: 16,
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
-              fill="white"
-            />
-          </svg>
+          SignSafe
         </div>
-        <div>
-          <p className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.45)" }}>
-            SignSafe Analysis
-          </p>
-          <p className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
-            Transaction Review
-          </p>
-        </div>
-        <div className="ml-auto">
+
+        {/* Risk stamp */}
+        <div className="flex items-center gap-2 mb-3">
           <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
-            style={{ background: "#ffe4e3", color: "#991f1c" }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-extrabold uppercase"
+            style={{
+              fontSize: 13,
+              letterSpacing: "0.07em",
+              background: "#ffe4e3",
+              color: "#991f1c",
+            }}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6L6 18" />
             </svg>
-            DANGER
+            Danger
           </span>
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="px-5 py-4">
-        <p
-          className="text-sm font-medium leading-relaxed"
-          style={{ color: "rgba(255,255,255,0.85)" }}
-        >
-          This transaction transfers all your token accounts to an unknown wallet. This is a known wallet drain pattern.
-        </p>
-      </div>
-
-      {/* Actions list */}
-      <div className="px-5 pb-4 flex flex-col gap-2">
-        <div
-          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
-          style={{ background: "rgba(255,255,255,0.05)" }}
-        >
           <span
-            className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-xs"
-            style={{ background: "#ffe4e3", color: "#991f1c" }}
+            className="inline-flex items-center px-2.5 py-1 rounded-full"
+            style={{ fontSize: 11, fontWeight: 600, background: "rgba(15,31,53,0.07)", color: "#536277" }}
           >
-            !
+            Method: sendTransaction
           </span>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
-            Transfer authority of USDC token account to{" "}
-            <span className="font-mono" style={{ color: "#ff9a9a" }}>
-              Dr41n...3rX9
-            </span>
-          </p>
         </div>
-        <div
-          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
-          style={{ background: "rgba(255,255,255,0.05)" }}
-        >
-          <span
-            className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-xs"
-            style={{ background: "#ffe4e3", color: "#991f1c" }}
-          >
-            !
-          </span>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
-            Transfer authority of SOL account to{" "}
-            <span className="font-mono" style={{ color: "#ff9a9a" }}>
-              Dr41n...3rX9
-            </span>
-          </p>
-        </div>
-      </div>
 
-      {/* Risk reasons */}
-      <div
-        className="mx-5 mb-4 px-3 py-3 rounded-xl"
-        style={{ background: "rgba(153, 31, 28, 0.15)", border: "1px solid rgba(153,31,28,0.3)" }}
-      >
-        <p className="text-xs font-semibold mb-1" style={{ color: "#ff9a9a" }}>
-          Why this is risky
-        </p>
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.6)" }}>
-          Signing this gives a third party full control over your assets. You will not be able to recover them.
-        </p>
-      </div>
-
-      {/* Buttons */}
-      <div
-        className="flex gap-3 px-5 pb-5"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "16px" }}
-      >
-        <button
-          className="flex-1 py-2.5 rounded-btn-lg text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#991f1c", color: "white" }}
-        >
-          Block
-        </button>
-        <button
-          className="flex-1 py-2.5 rounded-btn-lg text-sm font-medium transition-opacity hover:opacity-80"
+        {/* Summary headline */}
+        <h3
           style={{
-            background: "rgba(255,255,255,0.07)",
-            color: "rgba(255,255,255,0.55)",
-            border: "1px solid rgba(255,255,255,0.1)",
+            margin: "0 0 8px",
+            fontSize: 18,
+            fontWeight: 700,
+            lineHeight: 1.2,
+            color: "#0f1f35",
           }}
         >
-          Proceed anyway
-        </button>
+          This transaction drains your wallet.
+        </h3>
+
+        {/* Verdict callout */}
+        <p
+          style={{
+            margin: "0 0 14px",
+            padding: "9px 12px",
+            borderLeft: "3px solid #d63b37",
+            borderRadius: "0 8px 8px 0",
+            background: "rgba(15,31,53,0.03)",
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: "#536277",
+          }}
+        >
+          Do not sign this unless you independently trust every destination address.
+        </p>
+
+        {/* Actions */}
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.13em",
+            textTransform: "uppercase",
+            color: "#991f1c",
+            marginBottom: 6,
+          }}
+        >
+          Risk flags
+        </div>
+        <div
+          style={{
+            background: "#ffe4e3",
+            borderRadius: 12,
+            padding: "0 14px",
+            marginBottom: 18,
+          }}
+        >
+          {["Bulk token movement to an unverified address.", "Transaction does not match a normal swap or mint flow."].map(
+            (item, i, arr) => (
+              <div
+                key={i}
+                style={{
+                  padding: "9px 0 9px 20px",
+                  borderBottom: i < arr.length - 1 ? "1px solid rgba(15,31,53,0.08)" : "none",
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: "#0f1f35",
+                  position: "relative",
+                }}
+              >
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    color: "#991f1c",
+                    fontWeight: 800,
+                    fontSize: 13,
+                  }}
+                >
+                  !
+                </span>
+                {item}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Buttons — danger layout: block primary */}
+        <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 10 }}>
+          <button
+            style={{
+              minHeight: 46,
+              borderRadius: 14,
+              border: "none",
+              cursor: "default",
+              fontSize: 14,
+              fontWeight: 700,
+              background: "linear-gradient(135deg, #d63b37, #9d2220)",
+              color: "white",
+              boxShadow: "0 2px 12px rgba(153,31,28,0.30)",
+            }}
+          >
+            Block
+          </button>
+          <button
+            style={{
+              minHeight: 46,
+              borderRadius: 14,
+              border: "none",
+              cursor: "default",
+              fontSize: 13,
+              fontWeight: 600,
+              background: "rgba(15,31,53,0.06)",
+              color: "#536277",
+            }}
+          >
+            Proceed anyway
+          </button>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            marginTop: 12,
+            fontSize: 11,
+            color: "#8fa3bb",
+            lineHeight: 1.5,
+          }}
+        >
+          🔒 AI analysis helps spot risk, but it is not a guarantee.
+        </div>
       </div>
     </div>
   );
@@ -179,21 +237,16 @@ export default function Hero() {
                 className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-btn-lg text-base font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                 style={{ background: "#2b6fff" }}
               >
+                {/* Chrome puzzle-piece / extension icon */}
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z"
-                    fill="white"
-                    fillOpacity="0.2"
-                  />
-                  <path
-                    d="M12 8v8M8 12l4 4 4-4"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  <circle cx="12" cy="12" r="10" fill="white" fillOpacity="0.2" />
+                  <circle cx="12" cy="12" r="4" fill="white" />
+                  <path d="M12 2C6.48 2 2 6.48 2 12" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M22 12c0-5.52-4.48-10-10-10" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M12 22c5.52 0 10-4.48 10-10" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M2 12c0 5.52 4.48 10 10 10" stroke="white" strokeWidth="2" strokeLinecap="round" />
                 </svg>
-                Add to Chrome — it&apos;s free
+                Install free — it&apos;s free
               </a>
 
               <a
@@ -226,17 +279,10 @@ export default function Hero() {
             </p>
           </div>
 
-          {/* Right: mock overlay card */}
+          {/* Right: faithful overlay mock */}
           <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-sm">
-              {/* Glow behind card */}
-              <div
-                className="absolute inset-0 rounded-card-lg blur-3xl opacity-20"
-                style={{ background: "#991f1c", transform: "scale(0.9) translateY(8%)" }}
-              />
-              <div className="relative animate-fade-in">
-                <MockOverlayCard />
-              </div>
+            <div className="relative w-full max-w-sm animate-fade-in">
+              <MockOverlayCard />
             </div>
           </div>
         </div>

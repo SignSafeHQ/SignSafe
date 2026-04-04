@@ -43,13 +43,34 @@ function SparkleIcon() {
   );
 }
 
+function ArrowRight() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="hidden md:block flex-shrink-0"
+      style={{ color: "rgba(15,31,53,0.18)", marginBottom: "28px" }}
+    >
+      <path
+        d="M5 12h14M13 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 const steps = [
   {
     number: "01",
     icon: <WalletIcon />,
     title: "SignSafe intercepts",
     description:
-      "Before any popup appears, SignSafe catches the signing request in the background. The dApp never knows it's being analyzed.",
+      "Before any popup appears, SignSafe catches the signing request in the background. The dApp never knows it&apos;s being analyzed.",
     color: "#2b6fff",
     bg: "rgba(43, 111, 255, 0.08)",
   },
@@ -75,67 +96,73 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section
-      id="how-it-works"
-      className="py-20 px-5 sm:px-8"
-    >
+    <section id="how-it-works" className="py-20 px-5 sm:px-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <h2
             className="text-3xl sm:text-4xl font-bold tracking-tight mb-4"
             style={{ color: "#0f1f35" }}
           >
-            How it works
+            Three seconds of automatic protection
           </h2>
           <p className="text-lg max-w-xl mx-auto" style={{ color: "#536277" }}>
-            Three steps happen automatically in the background — you just see the verdict.
+            Everything happens in the background — you just see the verdict.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 relative">
-          {/* Connector line (desktop only) */}
-          <div
-            className="hidden md:block absolute top-12 left-1/3 right-1/3 h-px"
-            style={{ background: "rgba(15,31,53,0.08)" }}
-          />
-
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
           {steps.map((step, i) => (
-            <div
-              key={i}
-              className="relative flex flex-col rounded-card p-7 transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover"
-              style={{
-                background: "rgba(255,255,255,0.7)",
-                border: "1px solid rgba(255,255,255,0.9)",
-                backdropFilter: "blur(8px)",
-                boxShadow: "0 2px 20px rgba(15,31,53,0.06)",
-              }}
-            >
-              {/* Step number */}
-              <span
-                className="absolute top-5 right-5 text-xs font-bold tabular-nums"
-                style={{ color: "rgba(15,31,53,0.2)" }}
-              >
-                {step.number}
-              </span>
-
-              {/* Icon */}
+            <div key={i} className="flex flex-col">
+              {/* Card */}
               <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center mb-5"
-                style={{ background: step.bg, color: step.color }}
+                className="relative flex flex-col rounded-card p-7 flex-1 transition-all duration-300 hover:-translate-y-1 hover:shadow-card-hover"
+                style={{
+                  background: "rgba(255,255,255,0.7)",
+                  border: "1px solid rgba(255,255,255,0.9)",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 2px 20px rgba(15,31,53,0.06)",
+                }}
               >
-                {step.icon}
+                {/* Step number — large watermark */}
+                <span
+                  className="absolute top-4 right-5 font-bold tabular-nums select-none"
+                  style={{ fontSize: "42px", lineHeight: 1, color: "rgba(15,31,53,0.05)" }}
+                >
+                  {step.number}
+                </span>
+
+                {/* Icon */}
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: step.bg, color: step.color }}
+                >
+                  {step.icon}
+                </div>
+
+                <h3 className="text-lg font-bold mb-2.5" style={{ color: "#0f1f35" }}>
+                  {step.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: "#536277" }}>
+                  {step.description}
+                </p>
               </div>
 
-              <h3
-                className="text-lg font-bold mb-2.5"
-                style={{ color: "#0f1f35" }}
-              >
-                {step.title}
-              </h3>
-              <p className="text-sm leading-relaxed" style={{ color: "#536277" }}>
-                {step.description}
-              </p>
+              {/* Connector arrow between cards — desktop only, not after last */}
+              {i < steps.length - 1 && (
+                <div className="hidden md:flex absolute" style={{ display: "none" }} />
+              )}
             </div>
+          ))}
+        </div>
+
+        {/* Mobile step connector dots */}
+        <div className="flex justify-center gap-2 mt-8 md:hidden">
+          {steps.map((_, i) => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full"
+              style={{ background: "rgba(15,31,53,0.18)" }}
+            />
           ))}
         </div>
       </div>

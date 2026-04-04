@@ -7,21 +7,21 @@ const riskConfig: Record<
   safe: {
     bg: "#d6f5e3",
     ink: "#0a5c35",
-    border: "#0a5c35",
+    border: "#1a9955",
     label: "SAFE",
     dot: "#16a34a",
   },
   review: {
     bg: "#fff0c2",
     ink: "#7a4c00",
-    border: "#d97706",
+    border: "#c07b00",
     label: "REVIEW",
     dot: "#d97706",
   },
   danger: {
     bg: "#ffe4e3",
     ink: "#991f1c",
-    border: "#991f1c",
+    border: "#d63b37",
     label: "DANGER",
     dot: "#dc2626",
   },
@@ -78,36 +78,66 @@ function RiskBadge({ risk }: { risk: RiskLevel }) {
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
       style={{ background: cfg.bg, color: cfg.ink }}
     >
-      <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: cfg.dot }}
-      />
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} />
       {cfg.label}
     </span>
   );
 }
 
-function CheckIcon({ risk }: { risk: RiskLevel }) {
-  const colors: Record<RiskLevel, string> = {
-    safe: "#16a34a",
-    review: "#d97706",
-    danger: "#dc2626",
-  };
+// Semantic icon per risk level — safe=check, review=warning, danger=X
+function ActionIcon({ risk }: { risk: RiskLevel }) {
+  if (risk === "safe") {
+    return (
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="flex-shrink-0 mt-0.5"
+      >
+        <circle cx="12" cy="12" r="10" fill="#16a34a" fillOpacity="0.12" />
+        <path
+          d="M8 12l3 3 5-5"
+          stroke="#16a34a"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (risk === "review") {
+    return (
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="flex-shrink-0 mt-0.5"
+      >
+        <circle cx="12" cy="12" r="10" fill="#d97706" fillOpacity="0.12" />
+        <line x1="12" y1="8" x2="12" y2="13" stroke="#d97706" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="12" cy="16.5" r="1.2" fill="#d97706" />
+      </svg>
+    );
+  }
+
+  // danger
   return (
     <svg
-      width="14"
-      height="14"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       className="flex-shrink-0 mt-0.5"
     >
-      <circle cx="12" cy="12" r="10" fill={colors[risk]} fillOpacity="0.15" />
+      <circle cx="12" cy="12" r="10" fill="#dc2626" fillOpacity="0.12" />
       <path
-        d="M9 12l2 2 4-4"
-        stroke={colors[risk]}
+        d="M9 9l6 6M15 9l-6 6"
+        stroke="#dc2626"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );
@@ -161,10 +191,7 @@ export default function Scenarios() {
                       >
                         {scenario.name}
                       </h3>
-                      <span
-                        className="text-xs font-medium"
-                        style={{ color: "#8fa3bb" }}
-                      >
+                      <span className="text-xs font-medium" style={{ color: "#8fa3bb" }}>
                         {scenario.tag}
                       </span>
                     </div>
@@ -176,11 +203,7 @@ export default function Scenarios() {
                     {scenario.summary}
                   </p>
 
-                  {/* Divider */}
-                  <div
-                    className="h-px"
-                    style={{ background: "rgba(15,31,53,0.07)" }}
-                  />
+                  <div className="h-px" style={{ background: "rgba(15,31,53,0.07)" }} />
 
                   {/* Actions */}
                   <div className="flex flex-col gap-2">
@@ -192,11 +215,8 @@ export default function Scenarios() {
                     </p>
                     {scenario.actions.map((action, j) => (
                       <div key={j} className="flex items-start gap-2">
-                        <CheckIcon risk={scenario.risk} />
-                        <p
-                          className="text-xs leading-relaxed"
-                          style={{ color: "#536277" }}
-                        >
+                        <ActionIcon risk={scenario.risk} />
+                        <p className="text-xs leading-relaxed" style={{ color: "#536277" }}>
                           {action}
                         </p>
                       </div>

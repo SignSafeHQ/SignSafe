@@ -7,7 +7,16 @@
   const resultBanner = document.getElementById("result-banner");
   const iframe = document.getElementById("overlay-frame");
   let currentSessionId = null;
+  let currentFixtureId = null;
   let bannerTimerId = null;
+  const cardEls = new Map(); // fixtureId → card element
+
+  const FIXTURE_TYPES = {
+    DEMO_JUPITER_SWAP: "DEX swap",
+    DEMO_DRAINER:      "Phishing",
+    DEMO_NFT_MINT:     "Metaplex mint",
+    DEMO_RAW_MESSAGE:  "Message signing"
+  };
 
   iframe.addEventListener("load", () => {
     iframe.dataset.ready = "true";
@@ -15,13 +24,18 @@
 
   for (const fixture of fixtures) {
     const risk = fixture.verdict.risk;
+    const typeTag = FIXTURE_TYPES[fixture.id] || "Transaction";
 
     const card = document.createElement("article");
     card.className = `card ${risk}`;
 
     const badgeDot = badgeSvg(risk);
     card.innerHTML = `
-      <div class="badge ${risk}">${badgeDot}${capitalize(risk)}</div>
+      <div class="card-top">
+        <div class="badge ${risk}">${badgeDot}${capitalize(risk)}</div>
+        <div class="played-badge hidden" id="played-${fixture.id}"></div>
+      </div>
+      <div class="type-tag">${typeTag}</div>
       <h2>${fixture.name}</h2>
       <p>${fixture.description}</p>
       <button type="button">
@@ -30,8 +44,12 @@
       </button>
     `;
 
-    card.addEventListener("click", () => previewFixture(fixture));
+    card.querySelector("button").addEventListener("click", (e) => {
+      e.stopPropagation();
+      previewFixture(fixture);
+    });
     grid.appendChild(card);
+    cardEls.set(fixture.id, card);
   }
 
   window.addEventListener("message", (event) => {
@@ -46,10 +64,12 @@
 
     iframe.style.display = "none";
     showResultBanner(message.approved);
+    markCardPlayed(currentFixtureId, message.approved);
   });
 
   async function previewFixture(fixture) {
     currentSessionId = `demo-${fixture.id}-${Date.now()}`;
+    currentFixtureId = fixture.id;
     iframe.style.display = "block";
 
     clearTimeout(bannerTimerId);
@@ -71,6 +91,14 @@
     );
   }
 
+  function markCardPlayed(fixtureId, approved) {
+    if (!fixtureId) return;
+    const badge = document.getElementById(`played-${fixtureId}`);
+    if (!badge) return;
+    badge.textContent = approved ? "✓ Proceeded" : "✗ Blocked";
+    badge.className = `played-badge ${approved ? "approved" : "blocked"}`;
+  }
+
   function showResultBanner(approved) {
     const icon = approved
       ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
@@ -87,12 +115,7 @@
   }
 
   function badgeSvg(risk) {
-    const dots = {
-      safe: `<svg viewBox="0 0 8 8" style="width:7px;height:7px;flex-shrink:0"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>`,
-      review: `<svg viewBox="0 0 8 8" style="width:7px;height:7px;flex-shrink:0"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>`,
-      danger: `<svg viewBox="0 0 8 8" style="width:7px;height:7px;flex-shrink:0"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>`
-    };
-    return dots[risk] || "";
+    return `<svg viewBox="0 0 8 8" style="width:7px;height:7px;flex-shrink:0"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>`;
   }
 
   function capitalize(str) {

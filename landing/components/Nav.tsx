@@ -93,20 +93,13 @@ export default function Nav() {
           className="flex items-center gap-2 px-4 py-2 rounded-btn text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-md active:scale-95"
           style={{ background: "#2b6fff" }}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="12" cy="12" r="10" fill="white" fillOpacity="0.25" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
             <path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8l7 4-7 4z"
+              d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.35C17.25 22.15 21 17.25 21 12V6L12 2z"
               fill="white"
             />
           </svg>
-          Add to Chrome
+          Install free
         </a>
       </div>
     </header>

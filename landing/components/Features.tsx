@@ -56,7 +56,7 @@ const features = [
     icon: <WalletGroupIcon />,
     title: "Works with all wallets",
     description:
-      "Phantom, Solflare, Backpack, and any window.solana provider. SignSafe monkey-patches at the API level so coverage is automatic.",
+      "Works automatically with Phantom, Solflare, Backpack, and any Solana wallet — no configuration needed for each one.",
     color: "#2b6fff",
     bg: "rgba(43, 111, 255, 0.08)",
   },
@@ -98,11 +98,10 @@ export default function Features() {
             className="text-3xl sm:text-4xl font-bold tracking-tight mb-4"
             style={{ color: "#0f1f35" }}
           >
-            Built the right way
+            What SignSafe does with your data
           </h2>
           <p className="text-lg max-w-xl mx-auto" style={{ color: "#536277" }}>
-            No magic, no trust-me promises. SignSafe is transparent about
-            exactly what it does with your data.
+            No analytics. No telemetry. No hidden network calls. Here&apos;s exactly what happens.
           </p>
         </div>
 
