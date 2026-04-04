@@ -367,6 +367,66 @@ h1 {
 .verdict-callout.danger { border-left-color: var(--red);   background: var(--red-dim);   color: var(--text); }
 
 /* ─────────────────────────────────────────────
+   Impact cards
+───────────────────────────────────────────── */
+.impact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 7px;
+}
+
+.impact-card {
+  min-width: 0;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.impact-card.safe {
+  border-color: var(--green-border);
+  background: linear-gradient(180deg, rgba(34,197,94,0.09), rgba(34,197,94,0.03));
+}
+
+.impact-card.review {
+  border-color: var(--amber-border);
+  background: linear-gradient(180deg, rgba(245,158,11,0.09), rgba(245,158,11,0.03));
+}
+
+.impact-card.danger {
+  border-color: var(--red-border);
+  background: linear-gradient(180deg, rgba(239,58,58,0.11), rgba(239,58,58,0.03));
+}
+
+.impact-label {
+  margin-bottom: 6px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+
+.impact-value {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.impact-detail {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* ─────────────────────────────────────────────
    Section labels
 ───────────────────────────────────────────── */
 .section-label {
@@ -395,6 +455,10 @@ h1 {
 .list-card.danger-card {
   background: var(--red-dim);
   border-color: var(--red-border);
+}
+
+.findings-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
 }
 
 ul { margin: 0; padding: 0; list-style: none; }
@@ -428,10 +492,30 @@ li:last-child { border-bottom: none; }
   font-size: 13px;
 }
 
+#findings-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+#findings-list li {
+  padding-left: 20px;
+  color: var(--text);
+}
+
 /* ─────────────────────────────────────────────
    Facts grid
 ───────────────────────────────────────────── */
-#facts-section { margin-top: 0; }
+#facts-section,
+#actions-section {
+  margin-top: 14px;
+}
 
 .facts-grid {
   display: grid;
@@ -509,7 +593,7 @@ li:last-child { border-bottom: none; }
 }
 
 #batch-detail { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-#batch-actions { margin-top: 12px; }
+#batch-actions { margin-top: 0; }
 
 /* ─────────────────────────────────────────────
    Buttons
@@ -690,6 +774,8 @@ li:last-child { border-bottom: none; }
   #buttons { padding: 12px 18px 16px; }
   #footer  { padding: 0 18px 14px; }
   #eyebrow { padding: 14px 18px 0; }
+  .impact-grid,
+  .facts-grid { grid-template-columns: 1fr; }
 }
 
 /* ─────────────────────────────────────────────

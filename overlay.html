@@ -49,20 +49,28 @@
           </div>
           <div id="verdict-body">
             <p id="verdict-text" class="verdict-callout"></p>
-            <section id="facts-section">
-              <div class="section-label">Key facts</div>
-              <div id="facts-grid" class="facts-grid"></div>
+            <section id="findings-section">
+              <div class="section-label">Top findings</div>
+              <div class="list-card findings-card"><ul id="findings-list"></ul></div>
             </section>
-            <section>
-              <div class="section-label">What this transaction will do</div>
-              <div class="list-card"><ul id="actions-list"></ul></div>
-            </section>
-            <section id="risks-section" class="hidden">
-              <div class="section-label danger-label">Risk flags</div>
-              <div class="list-card danger-card"><ul id="risks-list"></ul></div>
+            <section id="impact-section">
+              <div class="section-label">Expected asset changes</div>
+              <div id="impact-grid" class="impact-grid"></div>
             </section>
             <details id="debug-details" class="debug-details">
-              <summary>Debug details</summary>
+              <summary>Show technical details</summary>
+              <section id="facts-section">
+                <div class="section-label">Technical details</div>
+                <div id="facts-grid" class="facts-grid"></div>
+              </section>
+              <section id="actions-section">
+                <div class="section-label">Decoded actions</div>
+                <div class="list-card"><ul id="actions-list"></ul></div>
+              </section>
+              <section id="risks-section" class="hidden">
+                <div class="section-label danger-label">Risk flags</div>
+                <div class="list-card danger-card"><ul id="risks-list"></ul></div>
+              </section>
               <div class="debug-meta" id="debug-meta"></div>
               <pre id="debug-json"></pre>
             </details>
@@ -73,10 +81,11 @@
           <div id="batch-badge" class="safe">Batch check</div>
           <h1 id="batch-summary"></h1>
           <p id="batch-detail" class="subtle"></p>
-          <div id="batch-facts-grid" class="facts-grid"></div>
-          <ul id="batch-actions"></ul>
+          <div id="batch-impact-grid" class="impact-grid"></div>
+          <div class="list-card findings-card"><ul id="batch-actions"></ul></div>
           <details id="batch-debug-details" class="debug-details">
-            <summary>Debug details</summary>
+            <summary>Show technical details</summary>
+            <div id="batch-facts-grid" class="facts-grid"></div>
             <div class="debug-meta" id="batch-debug-meta"></div>
             <pre id="batch-debug-json"></pre>
           </details>

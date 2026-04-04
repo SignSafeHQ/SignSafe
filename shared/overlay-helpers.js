@@ -12,7 +12,8 @@
     formatPrograms,
     formatMessagePreview,
     summarizeBatchFacts,
-    phaseLabel
+    phaseLabel,
+    shortMethodLabel
   };
 
   function summarizeBatchFacts(verdicts) {
@@ -113,6 +114,15 @@
       review: "Preparing review"
     };
     return labels[phase] || "Preparing";
+  }
+
+  function shortMethodLabel(method) {
+    const labels = {
+      signTransaction: "Transaction",
+      signAllTransactions: "Batch",
+      signMessage: "Message"
+    };
+    return labels[method] || method || "";
   }
 
   function shorten(value) {

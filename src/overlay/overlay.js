@@ -16,6 +16,7 @@
   const formatMessagePreview = HELPERS.formatMessagePreview || ((value) => String(value || ""));
   const summarizeBatchFacts = HELPERS.summarizeBatchFacts || (() => ({}));
   const phaseLabel = HELPERS.phaseLabel || (() => "Preparing");
+  const shortMethodLabel = HELPERS.shortMethodLabel || ((value) => value || "");
 
   let currentSessionId = null;
   let stepTimerId = null;
@@ -104,7 +105,6 @@
 
     const facts = normalizeFacts(verdict);
     const method = facts.intercepted_method || verdict.intercepted_method || verdict.method || "transaction";
-    const source = facts.source || verdict.source || "unknown";
     const reasonCodes = normalizeArray(verdict.reason_codes);
 
     // Risk stamp (merged icon + label)
@@ -114,7 +114,7 @@
       stampEl.innerHTML = riskStampInner(risk);
     }
 
-    setText("method-badge", method ? `Method: ${method}` : "");
+    setText("method-badge", method ? shortMethodLabel(method) : "");
     setText("progress-label", meta && meta.total > 1 ? `Transaction ${meta.current} of ${meta.total}` : "");
     setText("summary", verdict.summary || "Unable to analyze this transaction clearly.");
 
@@ -125,6 +125,8 @@
       verdictTextEl.className = `verdict-callout ${risk}`;
     }
 
+    renderFindings(verdict, facts, risk);
+    renderImpactGrid("impact-grid", buildImpactItems(facts, risk, verdict));
     renderFacts("facts-grid", facts);
     fillList("actions-list", normalizeArray(verdict.actions), "No visible actions were extracted.");
 
@@ -141,7 +143,7 @@
     setText(
       "debug-meta",
       [
-        `Source: ${source}`,
+        `Method: ${method}`,
         `Simulation: ${facts.simulation_status || verdict.simulation_status || "unknown"}`,
         `Risk codes: ${reasonCodes.length > 0 ? reasonCodes.join(", ") : "none"}`
       ].join(" | ")
@@ -175,9 +177,10 @@
     setText(
       "batch-detail",
       unsafeCount === 0
-        ? "SignSafe did not detect suspicious effects in this batch. Review the combined actions below before continuing."
-        : "One or more items in this batch need attention. Review the combined facts below before continuing."
+        ? "SignSafe did not detect suspicious effects in this batch."
+        : "One or more items in this batch need attention."
     );
+    renderImpactGrid("batch-impact-grid", buildBatchImpactItems(verdicts, combinedFacts, unsafeCount));
     renderFacts("batch-facts-grid", combinedFacts);
     fillList("batch-actions", actionItems, "No suspicious effects were detected during simulation.");
     setText(
@@ -235,6 +238,200 @@
       card.appendChild(valueEl);
       container.appendChild(card);
     }
+  }
+
+  function renderFindings(verdict, facts, risk) {
+    const riskReasons = normalizeArray(verdict.risk_reasons);
+    const actions = normalizeArray(verdict.actions);
+    const findings = [];
+
+    if (risk === "danger") {
+      findings.push(...riskReasons.slice(0, 3));
+    } else {
+      findings.push(...riskReasons.slice(0, 2));
+      findings.push(...actions.slice(0, 1));
+    }
+
+    if (findings.length === 0 && facts.programs?.length > 0) {
+      findings.push(`Touches ${facts.programs.slice(0, 2).join(" and ")}.`);
+    }
+
+    fillList("findings-list", dedupe(findings).slice(0, 3), "No major issues were highlighted.");
+  }
+
+  function renderImpactGrid(containerId, items) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = "";
+
+    for (const item of items) {
+      const card = document.createElement("div");
+      card.className = `impact-card ${item.tone || ""}`.trim();
+
+      const label = document.createElement("div");
+      label.className = "impact-label";
+      label.textContent = item.label;
+
+      const value = document.createElement("div");
+      value.className = "impact-value";
+      value.textContent = item.value;
+
+      if (item.detail) {
+        const detail = document.createElement("div");
+        detail.className = "impact-detail";
+        detail.textContent = item.detail;
+        card.append(label, value, detail);
+      } else {
+        card.append(label, value);
+      }
+
+      container.appendChild(card);
+    }
+  }
+
+  function buildImpactItems(facts, risk, verdict) {
+    const solSummary = summarizeSol(facts.sol_changes || []);
+    const tokenSummary = summarizeTokens(facts.token_changes || []);
+    const programs = Array.isArray(facts.programs) ? facts.programs : [];
+    const items = [];
+
+    items.push({
+      label: "Verdict",
+      value: risk === "safe" ? "Looks clear" : risk === "danger" ? "High risk" : "Needs review",
+      detail: risk === "safe" ? "No major anomalies detected" : risk === "danger" ? "Block unless you expected this" : "Read the reasons before signing",
+      tone: risk
+    });
+
+    items.push({
+      label: "You send",
+      value: solSummary.out || tokenSummary.out || "No clear outflow",
+      tone: solSummary.out || tokenSummary.out ? "danger" : ""
+    });
+
+    items.push({
+      label: "You receive",
+      value: tokenSummary.in || solSummary.in || "No clear inflow",
+      tone: tokenSummary.in || solSummary.in ? "safe" : ""
+    });
+
+    items.push({
+      label: "Programs",
+      value: programs.length > 0 ? programs.slice(0, 2).join(", ") : "Not identified",
+      detail: programs.length > 2 ? `+${programs.length - 2} more` : "",
+      tone: programs.length > 0 ? "" : "review"
+    });
+
+    if ((facts.message_preview || "").trim()) {
+      items[1] = {
+        label: "Request",
+        value: "Message signature",
+        detail: "No on-chain simulation is available",
+        tone: "review"
+      };
+      items[2] = {
+        label: "Message",
+        value: truncateSingleLine(facts.message_preview, 56),
+        tone: ""
+      };
+    }
+
+    if (verdict.simulation_status === "failed") {
+      items[3] = {
+        label: "Simulation",
+        value: "Failed",
+        detail: "Effects could not be verified",
+        tone: "danger"
+      };
+    }
+
+    return items.slice(0, 4);
+  }
+
+  function buildBatchImpactItems(verdicts, combinedFacts, unsafeCount) {
+    const solSummary = summarizeSol(combinedFacts.sol_changes || []);
+    const tokenSummary = summarizeTokens(combinedFacts.token_changes || []);
+
+    return [
+      {
+        label: "Batch",
+        value: `${verdicts.length} requests`,
+        detail: unsafeCount === 0 ? "All appear safe" : `${unsafeCount} need review`,
+        tone: unsafeCount === 0 ? "safe" : "review"
+      },
+      {
+        label: "Likely outflow",
+        value: solSummary.out || tokenSummary.out || "No clear outflow",
+        tone: solSummary.out || tokenSummary.out ? "danger" : ""
+      },
+      {
+        label: "Likely inflow",
+        value: tokenSummary.in || solSummary.in || "No clear inflow",
+        tone: tokenSummary.in || solSummary.in ? "safe" : ""
+      },
+      {
+        label: "Programs",
+        value: Array.isArray(combinedFacts.programs) && combinedFacts.programs.length > 0
+          ? combinedFacts.programs.slice(0, 2).map(formatProgramLabel).join(", ")
+          : "Mixed",
+        tone: ""
+      }
+    ];
+  }
+
+  function summarizeSol(items) {
+    let out = 0;
+    let inbound = 0;
+    for (const item of items || []) {
+      const delta = Number(item.deltaSol ?? item.changeSOL ?? 0);
+      if (delta < 0) out += Math.abs(delta);
+      if (delta > 0) inbound += delta;
+    }
+
+    return {
+      out: out > 0 ? `${trimAmount(out)} SOL` : "",
+      in: inbound > 0 ? `${trimAmount(inbound)} SOL` : ""
+    };
+  }
+
+  function summarizeTokens(items) {
+    const out = [];
+    const inbound = [];
+    for (const item of items || []) {
+      const delta = Number(item.delta ?? item.change ?? 0);
+      if (!delta) continue;
+      const text = `${trimAmount(Math.abs(delta))} ${formatTokenLabel(item.mint)}`.trim();
+      if (delta < 0) out.push(text);
+      if (delta > 0) inbound.push(text);
+    }
+
+    return {
+      out: out.slice(0, 2).join(", "),
+      in: inbound.slice(0, 2).join(", ")
+    };
+  }
+
+  function formatTokenLabel(mint) {
+    const text = String(mint || "");
+    return text.length > 12 ? `${text.slice(0, 4)}...${text.slice(-4)}` : text || "token";
+  }
+
+  function formatProgramLabel(program) {
+    if (typeof program === "string") return program;
+    return program?.label || program?.programId || "Program";
+  }
+
+  function trimAmount(value) {
+    const number = Number(value || 0);
+    return Number.isInteger(number) ? String(number) : number.toFixed(4).replace(/\.?0+$/, "");
+  }
+
+  function truncateSingleLine(value, max) {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+  }
+
+  function dedupe(items) {
+    return Array.from(new Set(items.filter(Boolean)));
   }
 
   function fillList(id, items, fallback) {
